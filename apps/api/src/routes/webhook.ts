@@ -1,0 +1,7 @@
+import { Router } from "express";
+import { prisma } from "../lib/prisma";
+import { verifyWebhookSignature } from "../lib/crypto";
+import { env } from "../config";
+const router=Router();
+router.post("/",async(req,res,next)=>{try{const signature=req.header("x-hub-signature");const event=req.header("x-digiflazz-event")??"unknown";const rawBody=req.rawBody??Buffer.from(JSON.stringify(req.body));if(!verifyWebhookSignature(rawBody,signature,env.DIGIFLAZZ_WEBHOOK_SECRET))return res.status(401).json({error:"Invalid webhook signature"});const payload=req.body;const data=payload?.data??payload;const refId=data?.ref_id??null;const eventRecord=await prisma.webhookEvent.create({data:{event,refId,signature,payload}});if(refId){const status=String(data?.status??"").toLowerCase();const mapped=status==="sukses"?"SUCCESS":status==="gagal"?"FAILED":status==="pending"?"PENDING":"UNKNOWN";await prisma.payment.updateMany({where:{refId},data:{status:mapped,message:data?.message,rc:data?.rc,serialNumber:data?.sn,period:data?.periode,amount:Number.isFinite(Number(data?.price))?Number(data.price):undefined,adminFee:Number.isFinite(Number(data?.admin))?Number(data.admin):undefined,sellingPrice:Number.isFinite(Number(data?.selling_price))?Number(data.selling_price):undefined,rawResponse:payload,paidAt:mapped==="SUCCESS"?new Date():undefined,lastStatusAt:new Date()}});}await prisma.webhookEvent.update({where:{id:eventRecord.id},data:{processed:true}});return res.json({received:true});}catch(e){next(e)}});
+export default router;

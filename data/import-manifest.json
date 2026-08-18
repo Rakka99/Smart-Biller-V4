@@ -1,0 +1,23 @@
+{
+  "source_file": "Data Master Pelanggan.xlsx",
+  "source_rows": 1328,
+  "imported_columns": [
+    "idpel",
+    "nama",
+    "tarif",
+    "daya",
+    "rbm",
+    "langkah",
+    "gardu",
+    "tiang",
+    "latx",
+    "longx"
+  ],
+  "billing_demo_periods": [
+    "2026-06",
+    "2026-07",
+    "2026-08"
+  ],
+  "billing_demo_values": true,
+  "note": "Billing values are synthetic demo values; customer master data is intentionally kept out of this public repository."
+}

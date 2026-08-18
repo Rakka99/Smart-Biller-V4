@@ -1,0 +1,40 @@
+name: Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm install
+      - run: npm run build
+      - run: npx cap add android
+      - run: npx cap sync android
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: android-actions/setup-android@v3
+
+      - run: chmod +x android/gradlew
+      - run: ./android/gradlew assembleDebug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pln-monitoring-debug-apk
+          path: apps/web/android/app/build/outputs/apk/debug/app-debug.apk

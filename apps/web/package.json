@@ -1,0 +1,26 @@
+{
+  "name": "@pln-monitoring/web",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "cap:add": "cap add android",
+    "cap:sync": "cap sync",
+    "cap:open": "cap open android"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^4.7.0",
+    "axios": "^1.11.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "vite": "^7.1.2",
+    "@capacitor/core": "^7.4.2",
+    "@capacitor/android": "^7.4.2",
+    "@capacitor/preferences": "^7.0.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2",
+    "@capacitor/cli": "^7.4.2"
+  }
+}

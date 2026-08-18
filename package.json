@@ -1,0 +1,6 @@
+{
+  "name": "pln-monitoring",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": ["apps/api", "apps/web"]
+}

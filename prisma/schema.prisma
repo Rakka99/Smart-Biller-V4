@@ -1,0 +1,224 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+
+enum UserRole { ADMIN SUPERVISOR BILLER }
+enum InquiryStatus { SUCCESS FAILED }
+enum PaymentStatus { PENDING SUCCESS FAILED UNKNOWN }
+enum BillingCategory { PREVENTIF KOREKTIF IRISAN }
+enum BillingStatus { UNPAID PAID }
+enum PdilAction { CREATE UPDATE }
+
+model User {
+  id String @id @default(cuid())
+  name String
+  email String @unique
+  passwordHash String
+  role UserRole @default(BILLER)
+  regionId String?
+  ulpId String?
+  region Region? @relation(fields: [regionId], references: [id])
+  ulp ULP? @relation(fields: [ulpId], references: [id])
+  active Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  auditLogs AuditLog[]
+  payments Payment[]
+  pdilRecords PDILRecord[] @relation("PdilActor")
+  assignments CustomerAssignment[]
+}
+
+model Region {
+  id String @id @default(cuid())
+  code String @unique
+  name String
+  active Boolean @default(true)
+  ulps ULP[]
+  users User[]
+  customers Customer[]
+  createdAt DateTime @default(now())
+}
+
+model ULP {
+  id String @id @default(cuid())
+  code String @unique
+  name String
+  regionId String
+  region Region @relation(fields: [regionId], references: [id])
+  active Boolean @default(true)
+  users User[]
+  customers Customer[]
+  createdAt DateTime @default(now())
+  @@index([regionId])
+}
+
+model Customer {
+  id String @id @default(cuid())
+  customerNo String @unique
+  meterNo String?
+  name String?
+  subscriberId String?
+  segmentPower String?
+  tariff String?
+  rbm String?
+  langkah Int?
+  gardu String?
+  tiang String?
+  address String?
+  phone String?
+  village String?
+  district String?
+  city String?
+  postalCode String?
+  latitude Float?
+  longitude Float?
+  regionId String?
+  ulpId String?
+  region Region? @relation(fields: [regionId], references: [id])
+  ulp ULP? @relation(fields: [ulpId], references: [id])
+  active Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  inquiries Inquiry[]
+  payments Payment[]
+  billings Billing[]
+  assignments CustomerAssignment[]
+  pdilRecords PDILRecord[] @relation("PdilCustomer")
+  @@index([name])
+  @@index([meterNo])
+  @@index([regionId, ulpId])
+}
+
+model CustomerAssignment {
+  id String @id @default(cuid())
+  customerId String
+  userId String
+  active Boolean @default(true)
+  assignedAt DateTime @default(now())
+  customer Customer @relation(fields: [customerId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+  @@unique([customerId, userId])
+  @@index([userId, active])
+}
+
+model Inquiry {
+  id String @id @default(cuid())
+  refId String @unique
+  customerId String
+  customer Customer @relation(fields: [customerId], references: [id])
+  status InquiryStatus
+  message String?
+  rc String?
+  period String?
+  adminFee Int?
+  amount Int?
+  total Int?
+  rawResponse Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  payments Payment[]
+  @@index([customerId, createdAt])
+}
+
+model Billing {
+  id String @id @default(cuid())
+  customerId String
+  period String
+  dueDate DateTime
+  amount Int @default(0)
+  penalty Int @default(0)
+  total Int @default(0)
+  status BillingStatus @default(UNPAID)
+  category BillingCategory
+  paidAt DateTime?
+  sourceRefId String?
+  rawData Json?
+  customer Customer @relation(fields: [customerId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([customerId, period])
+  @@index([period, category, status])
+  @@index([customerId, status])
+}
+
+model Payment {
+  id String @id @default(cuid())
+  refId String @unique
+  invoiceNo String? @unique
+  customerId String
+  inquiryId String
+  userId String
+  customer Customer @relation(fields: [customerId], references: [id])
+  inquiry Inquiry @relation(fields: [inquiryId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+  status PaymentStatus @default(PENDING)
+  message String?
+  rc String?
+  serialNumber String?
+  amount Int?
+  adminFee Int?
+  sellingPrice Int?
+  period String?
+  rawResponse Json?
+  paidAt DateTime?
+  lastStatusAt DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  invoice Invoice?
+  @@index([status, createdAt])
+  @@index([customerId, createdAt])
+  @@index([userId, createdAt])
+}
+
+model Invoice {
+  id String @id @default(cuid())
+  invoiceNo String @unique
+  paymentId String @unique
+  customerId String
+  total Int
+  issuedAt DateTime @default(now())
+  metadata Json?
+  payment Payment @relation(fields: [paymentId], references: [id])
+}
+
+model PDILRecord {
+  id String @id @default(cuid())
+  customerId String
+  actorId String
+  action PdilAction
+  beforeData Json?
+  afterData Json
+  notes String?
+  createdAt DateTime @default(now())
+  customer Customer @relation("PdilCustomer", fields: [customerId], references: [id])
+  actor User @relation("PdilActor", fields: [actorId], references: [id])
+  @@index([customerId, createdAt])
+}
+
+model WebhookEvent {
+  id String @id @default(cuid())
+  event String
+  refId String?
+  signature String?
+  payload Json
+  processed Boolean @default(false)
+  createdAt DateTime @default(now())
+  @@index([refId, createdAt])
+}
+
+model AuditLog {
+  id String @id @default(cuid())
+  userId String?
+  user User? @relation(fields: [userId], references: [id])
+  action String
+  transactionId String?
+  ipAddress String?
+  metadata Json?
+  createdAt DateTime @default(now())
+  @@index([createdAt])
+}
