@@ -25,17 +25,28 @@ jobs:
         with:
           node-version: '22.12.0'
 
+      - name: Show tool versions
+        run: |
+          node --version
+          npm --version
+
       - name: Install web dependencies
         working-directory: apps/web
-        run: npm install --no-audit --no-fund
+        run: npm install --legacy-peer-deps --no-audit --no-fund
 
-      - name: Verify Capacitor
+      - name: Verify web dependencies
         working-directory: apps/web
-        run: npx cap --version
+        run: |
+          npm ls @capacitor/core @capacitor/android @capacitor/cli react react-dom vite typescript --depth=0
+          npx cap --version
 
-      - name: Build web application
+      - name: TypeScript and Vite build
         working-directory: apps/web
         run: npm run build
+
+      - name: Verify web output
+        working-directory: apps/web
+        run: test -f dist/index.html
 
       - name: Add Capacitor Android platform
         working-directory: apps/web
@@ -50,19 +61,26 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+          cache: gradle
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
       - name: Install Android SDK packages
         run: |
-          yes | sdkmanager --licenses >/dev/null || true
           sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          yes | sdkmanager --licenses >/dev/null || true
+
+      - name: Verify Android toolchain
+        run: |
+          java -version
+          sdkmanager --list_installed | grep -E 'platform-tools|platforms;android-35|build-tools;35.0.0' || true
 
       - name: Build debug APK
         working-directory: apps/web/android
         run: |
           chmod +x gradlew
+          ./gradlew --version
           ./gradlew assembleDebug --no-daemon --stacktrace --warning-mode all
 
       - name: Verify APK
