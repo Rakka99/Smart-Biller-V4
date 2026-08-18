@@ -5,36 +5,70 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: android-build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-apk:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/web
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout source
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package.json
 
-      - run: npm install
-      - run: npm run build
-      - run: npx cap add android
-      - run: npx cap sync android
+      - name: Install web dependencies
+        working-directory: apps/web
+        run: npm install --no-audit --no-fund
 
-      - uses: actions/setup-java@v4
+      - name: Build web application
+        working-directory: apps/web
+        run: npm run build
+
+      - name: Add Capacitor Android platform
+        working-directory: apps/web
+        run: npx cap add android
+
+      - name: Sync Capacitor Android
+        working-directory: apps/web
+        run: npx cap sync android
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 21
+          java-version: '21'
+          cache: gradle
+          cache-dependency-path: apps/web/android/**/*.gradle*
 
-      - uses: android-actions/setup-android@v3
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
 
-      - run: chmod +x android/gradlew
-      - run: ./android/gradlew assembleDebug
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses > /dev/null || true
 
-      - uses: actions/upload-artifact@v4
+      - name: Build debug APK
+        working-directory: apps/web/android
+        run: ./gradlew assembleDebug --stacktrace --no-daemon
+
+      - name: Verify APK exists
+        working-directory: apps/web/android
+        run: test -f app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
         with:
-          name: pln-monitoring-debug-apk
+          name: smart-biller-v4-debug-apk
           path: apps/web/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
