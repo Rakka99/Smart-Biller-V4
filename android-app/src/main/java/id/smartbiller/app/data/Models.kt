@@ -27,10 +27,10 @@ data class Billing(
     val status: String,
     val total: Double,
     val dueDate: String,
-    val sellingPrice: Double,
-    val admin: Double,
-    val amount: Double,
-    val customer: Customer
+    val customer: Customer,
+    val sellingPrice: Double = total,
+    val admin: Double = 2500.0,
+    val amount: Double = total
 )
 data class BillingPage(val items: List<Billing> = emptyList(), val total: Int = 0, val page: Int = 1, val limit: Int = 0)
 data class CustomerPage(val items: List<Customer> = emptyList())
