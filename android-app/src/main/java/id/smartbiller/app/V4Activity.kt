@@ -1,14 +1,9 @@
 package id.smartbiller.app
 
-import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
-import android.graphics.Paint
-import android.graphics.pdf.PdfDocument
-import android.os.Bundle
-import android.os.Environment
-import android.provider.MediaStore
 import android.net.Uri
+import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -27,7 +22,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -35,8 +30,6 @@ import androidx.compose.ui.unit.dp
 import id.smartbiller.app.data.*
 import id.smartbiller.app.ui.theme.SmartBillerTheme
 import kotlinx.coroutines.*
-import java.text.NumberFormat
-import java.util.Locale
 
 private val V4Blue = Color(0xFF0A2A4A)
 private val V4Glass = Color.White.copy(alpha = .10f)
@@ -100,16 +93,18 @@ private class V4ViewModel {
         scope.launch {
             val remote = runCatching { api.login(mapOf("username" to username, "password" to password)) }.getOrNull()
             withContext(Dispatchers.Main) {
-                if (remote != null) {
-                    token = remote.token
-                    user = remote.user
-                    reload()
-                } else if ((username.equals("admin", true) || username.equals("admin@example.com", true)) && password == "change-me-now") {
-                    token = "review-token"
-                    user = User("demo-admin", "admin@example.com", "Admin Demo", "ADMIN")
-                    reload()
-                } else {
-                    error = "Login gagal. Gunakan admin / change-me-now untuk review."
+                when {
+                    remote != null -> {
+                        token = remote.token
+                        user = remote.user
+                        reload()
+                    }
+                    (username.equals("admin", true) || username.equals("admin@example.com", true)) && password == "change-me-now" -> {
+                        token = "review-token"
+                        user = User("demo-admin", "admin@example.com", "Admin Demo", "ADMIN")
+                        reload()
+                    }
+                    else -> error = "Login gagal. Gunakan admin / change-me-now untuk review."
                 }
                 loading = false
             }
@@ -231,9 +226,7 @@ private fun V4Splash() {
             Box(
                 Modifier.size(110.dp).background(V4Accent.copy(alpha = .15f), RoundedCornerShape(30.dp)),
                 contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Default.Bolt, null, tint = V4Accent, modifier = Modifier.size(60.dp))
-            }
+            ) { Icon(Icons.Default.Bolt, null, tint = V4Accent, modifier = Modifier.size(60.dp)) }
             Spacer(Modifier.height(18.dp))
             Text("Smart Biller", color = Color.White, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
             Text("PLN Electricity Services", color = Color.White.copy(alpha = .7f))
@@ -344,18 +337,8 @@ private fun HomePage(vm: V4ViewModel) {
                 }
             }
         }
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Metric(Modifier.weight(1f), "Pelanggan", CustomerSeed.masterRecordCount)
-                Metric(Modifier.weight(1f), "Bayar", vm.paid())
-            }
-        }
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Metric(Modifier.weight(1f), "Belum", vm.unpaid())
-                Metric(Modifier.weight(1f), "Lewat", vm.overdue())
-            }
-        }
+        item { Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Metric(Modifier.weight(1f), "Pelanggan", CustomerSeed.masterRecordCount); Metric(Modifier.weight(1f), "Bayar", vm.paid()) } }
+        item { Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Metric(Modifier.weight(1f), "Belum", vm.unpaid()); Metric(Modifier.weight(1f), "Lewat", vm.overdue()) } }
         item {
             V4Card(Modifier.fillMaxWidth()) {
                 Text("Fitur Unggulan", color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
@@ -370,39 +353,10 @@ private fun HomePage(vm: V4ViewModel) {
     }
 }
 
-@Composable
-private fun Metric(m: Modifier, label: String, value: Int) = V4Card(m) {
-    Text(label, color = Color.White.copy(alpha = .62f), style = MaterialTheme.typography.bodySmall)
-    Spacer(Modifier.height(4.dp))
-    Text("$value", color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-}
-
-@Composable
-private fun StatChip(label: String, value: Int, color: Color) = AssistChip(
-    onClick = {},
-    label = { Text("$label $value") },
-    colors = AssistChipDefaults.assistChipColors(containerColor = color.copy(alpha = .18f), labelColor = Color.White)
-)
-
-@Composable
-private fun Feature(title: String, sub: String, icon: androidx.compose.ui.graphics.vector.ImageVector) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, null, tint = V4Accent, modifier = Modifier.size(25.dp))
-        Spacer(Modifier.width(10.dp))
-        Column {
-            Text(title, color = Color.White, fontWeight = FontWeight.SemiBold)
-            Text(sub, color = Color.White.copy(alpha = .58f), style = MaterialTheme.typography.bodySmall)
-        }
-    }
-}
-
-private fun navIcon(tab: Tab) = when (tab) {
-    Tab.HOME -> Icons.Default.Dashboard
-    Tab.CUSTOMER -> Icons.Default.People
-    Tab.BILLING -> Icons.Default.ReceiptLong
-    Tab.MAP -> Icons.Default.Map
-    Tab.PROFILE -> Icons.Default.Person
-}
+@Composable private fun Metric(m: Modifier, label: String, value: Int) = V4Card(m) { Text(label, color = Color.White.copy(alpha = .62f), style = MaterialTheme.typography.bodySmall); Spacer(Modifier.height(4.dp)); Text("$value", color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold) }
+@Composable private fun StatChip(label: String, value: Int, color: Color) = AssistChip(onClick = {}, label = { Text("$label $value") }, colors = AssistChipDefaults.assistChipColors(containerColor = color.copy(alpha = .18f), labelColor = Color.White))
+@Composable private fun Feature(title: String, sub: String, icon: ImageVector) { Row(Modifier.fillMaxWidth().padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) { Icon(icon, null, tint = V4Accent, modifier = Modifier.size(25.dp)); Spacer(Modifier.width(10.dp)); Column { Text(title, color = Color.White, fontWeight = FontWeight.SemiBold); Text(sub, color = Color.White.copy(alpha = .58f), style = MaterialTheme.typography.bodySmall) } } }
+private fun navIcon(tab: Tab): ImageVector = when (tab) { Tab.HOME -> Icons.Default.Dashboard; Tab.CUSTOMER -> Icons.Default.People; Tab.BILLING -> Icons.Default.ReceiptLong; Tab.MAP -> Icons.Default.Map; Tab.PROFILE -> Icons.Default.Person }
 
 @Composable
 private fun CustomerPage(vm: V4ViewModel) {
@@ -412,7 +366,7 @@ private fun CustomerPage(vm: V4ViewModel) {
             AssistChip(onClick = {}, label = { Text("Belum Bayar") })
             AssistChip(onClick = {}, label = { Text("Lewat Tempo") })
         }
-        OutlinedTextField(vm.query, vm::search, label = { Text("Cari ID / nama / alamat / RBM") }, modifier = Modifier.fillMaxWidth().padding(16.dp), leadingIcon = { Icon(Icons.Default.Search, null) }, singleLine = true)
+        OutlinedTextField(vm.query, { vm.search(it) }, label = { Text("Cari ID / nama / alamat / RBM") }, modifier = Modifier.fillMaxWidth().padding(16.dp), leadingIcon = { Icon(Icons.Default.Search, null) }, singleLine = true)
         LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
             item { Text("${vm.customerList.size} data lokal • master ${CustomerSeed.masterRecordCount}", color = Color.White.copy(alpha = .62f)) }
             items(vm.customerList) { c -> CustomerItem(vm, c) }
@@ -421,32 +375,29 @@ private fun CustomerPage(vm: V4ViewModel) {
 }
 
 @Composable
-private fun CustomerItem(vm: V4ViewModel, c: Customer) = V4Card(Modifier.fillMaxWidth()) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-            Text(c.name ?: "Pelanggan", color = Color.White, fontWeight = FontWeight.Bold)
-            Text(c.customerNo, color = Color.White.copy(alpha = .65f), style = MaterialTheme.typography.bodySmall)
+private fun CustomerItem(vm: V4ViewModel, c: Customer) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    V4Card(Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(c.name ?: "Pelanggan", color = Color.White, fontWeight = FontWeight.Bold)
+                Text(c.customerNo, color = Color.White.copy(alpha = .65f), style = MaterialTheme.typography.bodySmall)
+            }
+            AssistChip(onClick = { vm.reload() }, label = { Text(c.tarif ?: "-") })
         }
-        AssistChip(onClick = { vm.reload() }, label = { Text(c.tarif ?: "-") })
-    }
-    Spacer(Modifier.height(8.dp))
-    Text(c.address ?: "Alamat belum tersedia", color = Color.White.copy(alpha = .65f), style = MaterialTheme.typography.bodySmall)
-    Text("${c.daya ?: 0} VA • ${c.rbm} • ${c.ulp?.name ?: "ULP Sumedang"}", color = Color.White.copy(alpha = .55f), style = MaterialTheme.typography.bodySmall)
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        TextButton(onClick = { vm.inquiry(c.customerNo) }) { Text("Inquiry") }
-        TextButton(onClick = { openMap(c, LocalContext.current) }) { Text("Peta") }
+        Spacer(Modifier.height(8.dp))
+        Text(c.address ?: "Alamat belum tersedia", color = Color.White.copy(alpha = .65f), style = MaterialTheme.typography.bodySmall)
+        Text("${c.daya ?: 0} VA • ${c.rbm} • ${c.ulp?.name ?: "ULP Sumedang"}", color = Color.White.copy(alpha = .55f), style = MaterialTheme.typography.bodySmall)
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            TextButton(onClick = { vm.inquiry(c.customerNo) }) { Text("Inquiry") }
+            TextButton(onClick = { openMap(c, context) }) { Text("Peta") }
+        }
     }
 }
 
 @Composable
 private fun BillingPage(vm: V4ViewModel) {
-    val filtered = vm.billings.filter {
-        when (vm.billFilter) {
-            BillFilter.ALL -> true
-            BillFilter.UNPAID -> it.status == "UNPAID"
-            BillFilter.OVERDUE -> it.status == "OVERDUE"
-        }
-    }
+    val filtered = vm.billings.filter { when (vm.billFilter) { BillFilter.ALL -> true; BillFilter.UNPAID -> it.status == "UNPAID"; BillFilter.OVERDUE -> it.status == "OVERDUE" } }
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             AssistChip(onClick = { vm.billFilter = BillFilter.ALL }, label = { Text("Semua") })
@@ -454,21 +405,21 @@ private fun BillingPage(vm: V4ViewModel) {
             AssistChip(onClick = { vm.billFilter = BillFilter.OVERDUE }, label = { Text("Lewat Tempo") })
         }
         LazyColumn(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            items(filtered) { b ->
-                V4Card(Modifier.fillMaxWidth()) {
-                    Text(b.customer.name ?: "Pelanggan", color = Color.White, fontWeight = FontWeight.Bold)
-                    Text("${b.customer.customerNo} • ${b.period} • ${b.category}", color = Color.White.copy(alpha = .62f), style = MaterialTheme.typography.bodySmall)
-                    Text(formatRp(b.total), color = V4Accent, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text(b.status, color = if (b.status == "PAID") V4Good else if (b.status == "OVERDUE") V4Bad else V4Warn)
-                }
-            }
+            items(filtered) { b -> BillingItem(b) }
         }
     }
 }
 
+@Composable private fun BillingItem(b: Billing) = V4Card(Modifier.fillMaxWidth()) {
+    Text(b.customer.name ?: "Pelanggan", color = Color.White, fontWeight = FontWeight.Bold)
+    Text("${b.customer.customerNo} • ${b.period} • ${b.category}", color = Color.White.copy(alpha = .62f), style = MaterialTheme.typography.bodySmall)
+    Text(rupiah(b.total), color = V4Accent, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+    Text(b.status, color = when (b.status) { "PAID" -> V4Good; "OVERDUE" -> V4Bad; else -> V4Warn })
+}
+
 @Composable
 private fun MapPage(vm: V4ViewModel) {
-    val context = LocalContext.current
+    val context = androidx.compose.ui.platform.LocalContext.current
     LazyColumn(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
             V4Card(Modifier.fillMaxWidth().height(250.dp)) {
@@ -486,7 +437,7 @@ private fun MapPage(vm: V4ViewModel) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(c.name ?: "Pelanggan", color = Color.White, fontWeight = FontWeight.Bold)
-                        Text("${c.latitude}, ${c.longitude}", color = Color.White.copy(alpha = .55f), style = MaterialTheme.typography.bodySmall)
+                        Text("${c.latitude ?: "-"}, ${c.longitude ?: "-"}", color = Color.White.copy(alpha = .55f), style = MaterialTheme.typography.bodySmall)
                     }
                     IconButton(onClick = { openMap(c, context) }) { Icon(Icons.Default.Navigation, "Navigasi", tint = V4Accent) }
                 }
@@ -501,89 +452,71 @@ private fun ProfilePage(vm: V4ViewModel) {
         item {
             V4Card(Modifier.fillMaxWidth()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(64.dp).background(V4Accent.copy(alpha = .15f), CircleShape), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.Person, null, tint = V4Accent, modifier = Modifier.size(36.dp))
-                    }
+                    Box(Modifier.size(64.dp).background(V4Accent.copy(alpha = .15f), CircleShape), contentAlignment = Alignment.Center) { Icon(Icons.Default.Person, null, tint = V4Accent, modifier = Modifier.size(36.dp)) }
                     Spacer(Modifier.width(12.dp))
-                    Column {
-                        Text(vm.user?.name ?: "Rahmat K", color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                        Text("Biller • UP3 Sumedang", color = Color.White.copy(alpha = .65f))
-                    }
+                    Column { Text(vm.user?.name ?: "Rahmat K", color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold); Text("Biller • UP3 Sumedang", color = Color.White.copy(alpha = .65f)) }
                 }
             }
         }
-        item { Action("Laporan & Ranking", Icons.Default.Leaderboard) { vm.subPage = SubPage.REPORT } }
-        item { Action("Pengaturan", Icons.Default.Settings) { vm.subPage = SubPage.SETTINGS } }
-        item { Action("PDIL", Icons.Default.EditNote) { vm.subPage = SubPage.PDIL } }
-        item { Action("Foto & Evidence", Icons.Default.CameraAlt) { vm.subPage = SubPage.EVIDENCE } }
-        item { Action("Pembayaran Simulasi", Icons.Default.Payments) { vm.subPage = SubPage.PAYMENT } }
-        item { Action("Token Prabayar", Icons.Default.ElectricBolt) { vm.subPage = SubPage.TOKEN } }
-        item { Action("Tentang Aplikasi", Icons.Default.Info) { vm.subPage = SubPage.ABOUT } }
+        item { ActionRow("Laporan & Ranking", Icons.Default.Leaderboard) { vm.subPage = SubPage.REPORT } }
+        item { ActionRow("Pengaturan", Icons.Default.Settings) { vm.subPage = SubPage.SETTINGS } }
+        item { ActionRow("PDIL", Icons.Default.EditNote) { vm.subPage = SubPage.PDIL } }
+        item { ActionRow("Foto & Evidence", Icons.Default.CameraAlt) { vm.subPage = SubPage.EVIDENCE } }
+        item { ActionRow("Pembayaran Simulasi", Icons.Default.Payment) { vm.subPage = SubPage.PAYMENT } }
+        item { ActionRow("PLN Prabayar / Token", Icons.Default.Bolt) { vm.subPage = SubPage.TOKEN } }
+        item { ActionRow("Tentang Smart Biller", Icons.Default.Info) { vm.subPage = SubPage.ABOUT } }
         item { Button(onClick = vm::logout, modifier = Modifier.fillMaxWidth()) { Text("Keluar") } }
     }
 }
 
 @Composable
-private fun Action(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
-    V4Card(Modifier.fillMaxWidth()) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, null, tint = V4Accent)
-            Spacer(Modifier.width(12.dp))
-            TextButton(onClick = onClick) { Text(label, color = Color.White) }
-        }
+private fun ActionRow(title: String, icon: ImageVector, onClick: () -> Unit) = V4Card(Modifier.fillMaxWidth()) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, null, tint = V4Accent)
+        Spacer(Modifier.width(12.dp))
+        Text(title, color = Color.White, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+        TextButton(onClick = onClick) { Text("Buka") }
     }
 }
 
-@Composable private fun SettingsPage(vm: V4ViewModel) = SimplePage(vm, "Pengaturan", listOf("Notifikasi jatuh tempo", "Mode offline-first", "Sinkronisasi otomatis", "Keamanan sesi", "Dark / Light Mode"))
-@Composable private fun ReportPage(vm: V4ViewModel) = SimplePage(vm, "Laporan & Ranking", listOf("Harian • ${vm.totalCount()} pelanggan", "Sudah bayar • ${vm.paid()}", "Belum bayar • ${vm.unpaid()}", "Lewat tempo • ${vm.overdue()}", "Leaderboard biller"))
-@Composable private fun PdilPage(vm: V4ViewModel) = SimplePage(vm, "PDIL", listOf("DRAFT", "SUBMITTED", "VERIFIED", "APPROVED", "SYNCED", "Audit trail", "Data lama vs data baru"))
-@Composable private fun EvidencePage(vm: V4ViewModel) = SimplePage(vm, "Foto & Evidence", listOf("Meter", "Lokasi", "Kunjungan", "Penagihan", "Janji bayar", "Dokumen", "Bukti pembayaran"))
-@Composable private fun PaymentPage(vm: V4ViewModel) = SimplePage(vm, "Pembayaran Simulasi", listOf("1. Inquiry", "2. Detail pembayaran", "3. Konfirmasi", "Metode: Simulasi / QRIS Demo / Transfer Demo", "Receipt & Reference"))
-@Composable private fun TokenPage(vm: V4ViewModel) = SimplePage(vm, "PLN Prabayar / Token", listOf("Inquiry", "Nominal", "Harga + Admin", "Payment Demo", "Token", "Copy / Share / PDF / Print"))
-@Composable private fun AboutPage(vm: V4ViewModel) = SimplePage(vm, "Tentang Smart Biller", listOf("Smart Biller V4", "Kotlin + Jetpack Compose + Material 3", "PLN Electricity Services", "Review build 2026"))
+@Composable
+private fun SettingsPage(vm: V4ViewModel) = SimplePage("Pengaturan", vm, listOf("Notifikasi jatuh tempo", "Mode offline", "Sinkronisasi master", "Keamanan sesi", "Tema glassmorphism"))
+@Composable
+private fun ReportPage(vm: V4ViewModel) = SimplePage("Laporan & Ranking", vm, listOf("Preventif: ${vm.preventive()}", "Korektif: ${vm.corrective()}", "Irisan: ${vm.intersection()}", "Bayar: ${vm.paid()}", "Belum bayar: ${vm.unpaid()}", "Lewat tempo: ${vm.overdue()}"))
+@Composable
+private fun PdilPage(vm: V4ViewModel) = SimplePage("PDIL", vm, listOf("Draft", "Submit", "Verifikasi", "Approve", "Sync"))
+@Composable
+private fun EvidencePage(vm: V4ViewModel) = SimplePage("Foto & Evidence", vm, listOf("Foto meter", "Foto lokasi", "Foto kunjungan", "Status evidence"))
+@Composable
+private fun PaymentPage(vm: V4ViewModel) = SimplePage("Pembayaran Simulasi", vm, listOf("Inquiry pelanggan", "Review nominal", "Simulasi bayar", "Reference pembayaran"))
+@Composable
+private fun TokenPage(vm: V4ViewModel) = SimplePage("PLN Prabayar / Token", vm, listOf("Inquiry meter", "Nominal token", "Generate token demo", "Riwayat token"))
+@Composable
+private fun AboutPage(vm: V4ViewModel) = SimplePage("Tentang Smart Biller", vm, listOf("Kotlin + Jetpack Compose", "Material 3", "Glassmorphism", "Supabase Edge Function", "Mode review"))
 
 @Composable
-private fun SimplePage(vm: V4ViewModel, title: String, lines: List<String>) {
-    LazyColumn(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+private fun SimplePage(title: String, vm: V4ViewModel, rows: List<String>) {
+    LazyColumn(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
+        item {
+            TextButton(onClick = { vm.subPage = SubPage.NONE }) { Text("← Kembali") }
+        }
         item {
             V4Card(Modifier.fillMaxWidth()) {
                 Text(title, color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(8.dp))
-                lines.forEach { Text("• $it", color = Color.White.copy(alpha = .72f), modifier = Modifier.padding(vertical = 4.dp)) }
-                Spacer(Modifier.height(12.dp))
-                OutlinedButton(onClick = { vm.subPage = SubPage.NONE }, modifier = Modifier.fillMaxWidth()) { Text("Kembali") }
+                Spacer(Modifier.height(10.dp))
+                rows.forEach { row ->
+                    Text(row, color = Color.White.copy(alpha = .75f), modifier = Modifier.padding(vertical = 6.dp))
+                }
             }
         }
     }
 }
 
-private fun V4ViewModel.totalCount() = billings.size
+private fun rupiah(value: Double): String = "Rp ${"%,.0f".format(java.util.Locale("id", "ID"), value)}"
 
 private fun openMap(customer: Customer, context: Context) {
-    val lat = customer.latitude
-    val lng = customer.longitude
-    if (lat != null && lng != null) {
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("geo:$lat,$lng?q=$lat,$lng"))
-        context.startActivity(intent)
-    }
-}
-
-private fun formatRp(value: Double): String = NumberFormat.getCurrencyInstance(Locale("id", "ID")).apply { maximumFractionDigits = 0 }.format(value)
-
-private fun exportDemoPdf(context: Context, title: String, lines: List<String>) {
-    val doc = PdfDocument()
-    val page = doc.startPage(PdfDocument.PageInfo.Builder(595, 842, 1).create())
-    val paint = Paint().apply { textSize = 18f; isFakeBoldText = true }
-    page.canvas.drawText(title, 40f, 50f, paint)
-    paint.textSize = 12f; paint.isFakeBoldText = false
-    lines.take(45).forEachIndexed { i, line -> page.canvas.drawText(line, 40f, 80f + i * 16f, paint) }
-    doc.finishPage(page)
-    val values = ContentValues().apply {
-        put(MediaStore.Downloads.DISPLAY_NAME, "smart-biller-${System.currentTimeMillis()}.pdf")
-        put(MediaStore.Downloads.MIME_TYPE, "application/pdf")
-        put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
-    }
-    val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-    if (uri != null) context.contentResolver.openOutputStream(uri)?.use { doc.writeTo(it) }
-    doc.close()
+    val lat = customer.latitude ?: return
+    val lon = customer.longitude ?: return
+    val uri = Uri.parse("geo:$lat,$lon?q=$lat,$lon")
+    context.startActivity(Intent(Intent.ACTION_VIEW, uri))
 }
