@@ -12,9 +12,6 @@ concurrency:
   group: smart-biller-android-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-home
-
 jobs:
   build-native-apk:
     runs-on: ubuntu-latest
@@ -35,9 +32,10 @@ jobs:
         with:
           gradle-version: '8.13'
           cache-read-only: false
+          cache-overwrite-existing: true
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699
+        uses: android-actions/setup-android@v4.0.1
         with:
           packages: ''
           accept-android-sdk-licenses: 'true'
@@ -49,7 +47,15 @@ jobs:
           set -euo pipefail
           sdkmanager "platform-tools" "platforms;android-36" "build-tools;35.0.0"
 
-      - name: Verify project
+      - name: Verify toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          java -version
+          gradle --version
+          test -d "${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+
+      - name: Verify project files
         shell: bash
         run: |
           set -euo pipefail
@@ -65,17 +71,17 @@ jobs:
         run: |
           set -euo pipefail
           gradle wrapper --gradle-version 8.13 --distribution-type bin
-          test -x gradlew
+          chmod +x gradlew
+          ./gradlew --version
 
       - name: Build debug APK
         shell: bash
         run: |
           set -o pipefail
-          ./gradlew :android-app:clean :android-app:assembleDebug \
+          ./gradlew clean :android-app:assembleDebug \
             --stacktrace \
             --no-daemon \
             --no-configuration-cache \
-            --refresh-dependencies \
             --console=plain 2>&1 | tee gradle-build.log
 
       - name: Upload Gradle diagnostics
