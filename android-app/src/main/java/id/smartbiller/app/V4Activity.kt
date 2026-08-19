@@ -8,6 +8,7 @@ import android.graphics.Paint
 import android.graphics.pdf.PdfDocument
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
 import android.widget.Toast
@@ -79,7 +80,7 @@ private val Glass = Color.White.copy(alpha = 0.10f)
 private val GlassStrong = Color.White.copy(alpha = 0.16f)
 
 class V4Activity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: android.os.Bundle?) {
+    override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent { SmartBillerTheme { SmartBillerV4App() } }
     }
@@ -185,7 +186,6 @@ private class V4ViewModel {
     }
 
     fun selectBill(bill: Billing) { selectedBill = bill; paymentRef = null; subPage = SubPage.PAYMENT }
-
     fun simulatePayment() {
         val bill = selectedBill ?: return
         val ref = "SBL-${System.currentTimeMillis().toString().takeLast(8)}"
@@ -193,11 +193,7 @@ private class V4ViewModel {
         selectedBill = bill.copy(status = "PAID")
         paymentRef = ref
     }
-
-    fun generateToken() {
-        tokenValue = (1..20).joinToString("") { Random.nextInt(0, 10).toString() }
-    }
-
+    fun generateToken() { tokenValue = (1..20).joinToString("") { Random.nextInt(0, 10).toString() } }
     fun paid() = bills.count { it.status == "PAID" }
     fun unpaid() = bills.count { it.status == "UNPAID" }
     fun overdue() = bills.count { it.status == "OVERDUE" }
@@ -289,7 +285,7 @@ private fun LoginScreen(vm: V4ViewModel, onSuccess: () -> Unit) {
     }
 }
 
-@Composable private fun MiniInfo(title: String, subtitle: String) { GlassCard(Modifier.weight(1f)) { Text(title, color = Accent, fontWeight = FontWeight.Bold); Text(subtitle, color = Color.White.copy(alpha = .58f), style = MaterialTheme.typography.bodySmall) } }
+@Composable private fun MiniInfo(title: String, subtitle: String) { GlassCard(Modifier.fillMaxWidth()) { Text(title, color = Accent, fontWeight = FontWeight.Bold); Text(subtitle, color = Color.White.copy(alpha = .58f), style = MaterialTheme.typography.bodySmall) } }
 
 @Composable
 private fun Shell(vm: V4ViewModel) {
@@ -334,70 +330,80 @@ private fun HomePage(vm: V4ViewModel, open: (SubPage) -> Unit) {
     LazyColumn(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
         item {
             GlassCard(Modifier.fillMaxWidth()) {
-                Text("Halo, ${vm.user.name}", color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
-                Text("Biller • ULP Sumedang", color = Color.White.copy(alpha = .62f))
+                Text("Halo, ${vm.user.name}", color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Text("ULP Sumedang • periode AGU26", color = Color.White.copy(alpha = .62f))
                 Spacer(Modifier.height(8.dp))
                 Text(vm.syncText, color = Green, style = MaterialTheme.typography.bodySmall)
-                Spacer(Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { StatChip("Preventif", vm.preventive(), Cyan); StatChip("Korektif", vm.corrective(), Red); StatChip("Irisan", vm.intersection(), Accent) }
+                Row(Modifier.padding(top = 12.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StatChip("Preventif", vm.preventive(), Accent)
+                    StatChip("Korektif", vm.corrective(), Red)
+                    StatChip("Irisan", vm.intersection(), Color(0xFF64B5F6))
+                }
             }
         }
-        item { Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Metric(Modifier.weight(1f), "Total Pelanggan", CustomerSeed.masterRecordCount); Metric(Modifier.weight(1f), "Sudah Bayar", vm.paid()) } }
-        item { Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Metric(Modifier.weight(1f), "Belum Bayar", vm.unpaid()); Metric(Modifier.weight(1f), "Lewat Tempo", vm.overdue()) } }
+        item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { Metric("Pelanggan", CustomerSeed.masterRecordCount, Modifier.weight(1f)); Metric("Bayar", vm.paid(), Modifier.weight(1f)) } }
+        item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { Metric("Belum", vm.unpaid(), Modifier.weight(1f)); Metric("Lewat", vm.overdue(), Modifier.weight(1f)) } }
         item {
             GlassCard(Modifier.fillMaxWidth()) {
-                Text("Aktivitas & Shortcut", color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                QuickAction("Laporan & Ranking", "Harian • mingguan • bulanan", Icons.Default.Leaderboard) { open(SubPage.REPORT) }
-                QuickAction("PDIL", "Draft • Verifikasi • Sync", Icons.Default.EditNote) { open(SubPage.PDIL) }
-                QuickAction("Foto & Evidence", "Meter • lokasi • kunjungan", Icons.Default.CameraAlt) { open(SubPage.EVIDENCE) }
-                QuickAction("Pembayaran Simulasi", "Inquiry • bayar • reference", Icons.Default.Payment) { open(SubPage.PAYMENT) }
-                QuickAction("Prabayar / Token", "Generate token demo", Icons.Default.Bolt) { open(SubPage.TOKEN) }
-                QuickAction("Pengaturan", "Notifikasi • offline • sync", Icons.Default.Settings) { open(SubPage.SETTINGS) }
+                Text("Fitur Unggulan", color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Feature("Database Pelanggan", "1.328 record dari Excel/backend", Icons.Default.People)
+                Feature("Peta & Navigasi", "Koordinat pelanggan + Google Maps", Icons.Default.Map)
+                Feature("Laporan & Ranking", "Harian, target dan leaderboard", Icons.Default.Leaderboard)
+                Feature("Foto & Evidence", "Meter, lokasi dan kunjungan", Icons.Default.CameraAlt)
+                Feature("Mode Offline", "Seed lokal untuk review tanpa API", Icons.Default.CloudOff)
+                Feature("Notifikasi", "Pengingat jatuh tempo", Icons.Default.Notifications)
+            }
+        }
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FeatureAction("Laporan", Icons.Default.Leaderboard) { open(SubPage.REPORT) }
+                FeatureAction("PDIL", Icons.Default.EditNote) { open(SubPage.PDIL) }
+                FeatureAction("Evidence", Icons.Default.CameraAlt) { open(SubPage.EVIDENCE) }
             }
         }
     }
 }
 
-@Composable private fun QuickAction(title: String, subtitle: String, icon: ImageVector, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
-        Surface(shape = CircleShape, color = Accent.copy(alpha = .15f)) { Icon(icon, null, tint = Accent, modifier = Modifier.padding(8.dp).size(24.dp)) }
-        Spacer(Modifier.width(10.dp))
-        Column(Modifier.weight(1f)) { Text(title, color = Color.White, fontWeight = FontWeight.SemiBold); Text(subtitle, color = Color.White.copy(alpha = .55f), style = MaterialTheme.typography.bodySmall) }
-        TextButton(onClick = onClick) { Text("Buka") }
-    }
-}
-
-@Composable private fun Metric(modifier: Modifier, label: String, value: Int) { GlassCard(modifier) { Text(label, color = Color.White.copy(alpha = .58f), style = MaterialTheme.typography.bodySmall); Spacer(Modifier.height(4.dp)); Text("$value", color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black) } }
-@Composable private fun StatChip(label: String, value: Int, color: Color) = AssistChip(onClick = {}, label = { Text("$label $value") }, colors = AssistChipDefaults.assistChipColors(containerColor = color.copy(alpha = .18f), labelColor = Color.White))
+@Composable private fun Metric(label: String, value: Int, modifier: Modifier = Modifier) = GlassCard(modifier) { Text(label, color = Color.White.copy(alpha = .62f), style = MaterialTheme.typography.bodySmall); Spacer(Modifier.height(4.dp)); Text("$value", color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black) }
+@Composable private fun StatChip(label: String, value: Int, color: Color) = AssistChip(onClick = {}, label = { Text("$label  $value") }, colors = AssistChipDefaults.assistChipColors(containerColor = color.copy(alpha = .18f), labelColor = Color.White))
+@Composable private fun Feature(title: String, sub: String, icon: ImageVector) { Row(Modifier.fillMaxWidth().padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) { Icon(icon, null, tint = Accent, modifier = Modifier.size(24.dp)); Spacer(Modifier.width(10.dp)); Column { Text(title, color = Color.White, fontWeight = FontWeight.SemiBold); Text(sub, color = Color.White.copy(alpha = .56f), style = MaterialTheme.typography.bodySmall) } } }
+@Composable private fun FeatureAction(title: String, icon: ImageVector, onClick: () -> Unit) = GlassCard(Modifier.fillMaxWidth().widthIn(min = 96.dp).wrapContentHeight()) { Icon(icon, null, tint = Accent); Spacer(Modifier.height(5.dp)); Text(title, color = Color.White, fontWeight = FontWeight.SemiBold); TextButton(onClick = onClick) { Text("Buka") } }
 private fun navIcon(tab: Tab): ImageVector = when (tab) { Tab.HOME -> Icons.Default.Dashboard; Tab.CUSTOMER -> Icons.Default.People; Tab.BILLING -> Icons.Default.ReceiptLong; Tab.MAP -> Icons.Default.Map; Tab.PROFILE -> Icons.Default.Person }
 
 @Composable
 private fun CustomerPage(vm: V4ViewModel) {
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(selected = true, onClick = { vm.reload() }, label = { Text("Semua") })
-            FilterChip(selected = false, onClick = { vm.filter = BillFilter.UNPAID }, label = { Text("Belum Bayar") })
-            FilterChip(selected = false, onClick = { vm.filter = BillFilter.OVERDUE }, label = { Text("Lewat Tempo") })
+            AssistChip(onClick = { vm.reload() }, label = { Text("Semua") })
+            AssistChip(onClick = {}, label = { Text("Belum Bayar") })
+            AssistChip(onClick = {}, label = { Text("Lewat Tempo") })
         }
-        OutlinedTextField(vm.query, { vm.search(it) }, label = { Text("Cari IDPEL / nama / alamat / RBM") }, modifier = Modifier.fillMaxWidth().padding(16.dp), leadingIcon = { Icon(Icons.Default.Search, null) }, singleLine = true)
+        OutlinedTextField(vm.query, { vm.search(it) }, label = { Text("Cari ID / nama / alamat / RBM") }, modifier = Modifier.fillMaxWidth().padding(16.dp), leadingIcon = { Icon(Icons.Default.Search, null) }, singleLine = true)
         LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
-            item { Text("${vm.customers.size} hasil • master ${CustomerSeed.masterRecordCount} pelanggan", color = Color.White.copy(alpha = .58f)) }
-            items(vm.customers) { customer -> CustomerCard(vm, customer) }
+            item { Text("${vm.customers.size} data lokal • master ${CustomerSeed.masterRecordCount}", color = Color.White.copy(alpha = .62f)) }
+            items(vm.customers) { c -> CustomerItem(vm, c) }
         }
     }
 }
 
-@Composable private fun CustomerCard(vm: V4ViewModel, customer: Customer) {
+@Composable
+private fun CustomerItem(vm: V4ViewModel, c: Customer) {
     val context = LocalContext.current
     GlassCard(Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) { Text(customer.name ?: "Pelanggan", color = Color.White, fontWeight = FontWeight.Bold); Text(customer.customerNo, color = Color.White.copy(alpha = .6f), style = MaterialTheme.typography.bodySmall) }
-            AssistChip(onClick = {}, label = { Text(customer.tarif ?: "-") })
+            Column(Modifier.weight(1f)) {
+                Text(c.name ?: "Pelanggan", color = Color.White, fontWeight = FontWeight.Bold)
+                Text(c.customerNo, color = Color.White.copy(alpha = .65f), style = MaterialTheme.typography.bodySmall)
+            }
+            AssistChip(onClick = { vm.inquiry(c.customerNo) }, label = { Text(c.tarif ?: "-") })
         }
-        Spacer(Modifier.height(6.dp))
-        Text(customer.address ?: "Alamat belum tersedia", color = Color.White.copy(alpha = .68f), style = MaterialTheme.typography.bodySmall)
-        Text("${customer.daya ?: 0} VA • ${customer.rbm} • ${customer.ulp?.name ?: "ULP Sumedang"}", color = Color.White.copy(alpha = .52f), style = MaterialTheme.typography.bodySmall)
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) { TextButton(onClick = { vm.inquiry(customer.customerNo) }) { Text("Inquiry") }; TextButton(onClick = { openMap(customer, context) }) { Text("Peta") } }
+        Spacer(Modifier.height(8.dp))
+        Text(c.address ?: "Alamat belum tersedia", color = Color.White.copy(alpha = .65f), style = MaterialTheme.typography.bodySmall)
+        Text("${c.daya ?: 0} VA • ${c.rbm} • ${c.ulp?.name ?: "ULP Sumedang"}", color = Color.White.copy(alpha = .55f), style = MaterialTheme.typography.bodySmall)
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            TextButton(onClick = { vm.inquiry(c.customerNo) }) { Text("Inquiry") }
+            TextButton(onClick = { openMap(c, context) }) { Text("Peta") }
+        }
     }
 }
 
@@ -406,45 +412,48 @@ private fun BillingPage(vm: V4ViewModel) {
     val filtered = vm.bills.filter { when (vm.filter) { BillFilter.ALL -> true; BillFilter.UNPAID -> it.status == "UNPAID"; BillFilter.OVERDUE -> it.status == "OVERDUE" } }
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(selected = vm.filter == BillFilter.ALL, onClick = { vm.filter = BillFilter.ALL }, label = { Text("Semua") })
-            FilterChip(selected = vm.filter == BillFilter.UNPAID, onClick = { vm.filter = BillFilter.UNPAID }, label = { Text("Belum Bayar") })
-            FilterChip(selected = vm.filter == BillFilter.OVERDUE, onClick = { vm.filter = BillFilter.OVERDUE }, label = { Text("Lewat Tempo") })
+            AssistChip(onClick = { vm.filter = BillFilter.ALL }, label = { Text("Semua") })
+            AssistChip(onClick = { vm.filter = BillFilter.UNPAID }, label = { Text("Belum Bayar") })
+            AssistChip(onClick = { vm.filter = BillFilter.OVERDUE }, label = { Text("Lewat Tempo") })
         }
-        LazyColumn(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 24.dp)) { items(filtered) { bill -> BillingCard(vm, bill) } }
+        LazyColumn(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            items(filtered) { b -> BillingItem(b) { vm.selectBill(b) } }
+        }
     }
 }
 
-@Composable private fun BillingCard(vm: V4ViewModel, bill: Billing) {
-    GlassCard(Modifier.fillMaxWidth()) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) { Text(bill.customer.name ?: "Pelanggan", color = Color.White, fontWeight = FontWeight.Bold); Text("${bill.customer.customerNo} • ${bill.period}", color = Color.White.copy(alpha = .58f), style = MaterialTheme.typography.bodySmall) }
-            Text(rupiah(bill.total), color = Accent, fontWeight = FontWeight.Black)
-        }
-        Text("${bill.category} • ${bill.status}", color = if (bill.status == "PAID") Green else if (bill.status == "OVERDUE") Red else Accent, style = MaterialTheme.typography.bodySmall)
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { TextButton(onClick = { vm.selectBill(bill) }) { Text("Detail / Bayar") }; TextButton(onClick = { vm.inquiry(bill.customer.customerNo) }) { Text("Inquiry") } }
-    }
+@Composable private fun BillingItem(b: Billing, onClick: () -> Unit) = GlassCard(Modifier.fillMaxWidth()) {
+    Text(b.customer.name ?: "Pelanggan", color = Color.White, fontWeight = FontWeight.Bold)
+    Text("${b.customer.customerNo} • ${b.period} • ${b.category}", color = Color.White.copy(alpha = .62f), style = MaterialTheme.typography.bodySmall)
+    Text(rupiah(b.total), color = Accent, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+    Text(b.status, color = when (b.status) { "PAID" -> Green; "OVERDUE" -> Red; else -> Accent })
+    TextButton(onClick = onClick) { Text("Bayar / Edukasi") }
 }
 
 @Composable
 private fun MapPage(vm: V4ViewModel) {
     val context = LocalContext.current
-    val sumedang = LatLng(-6.8585, 107.9228)
-    val cameraState = rememberCameraPositionState { position = CameraPosition.fromLatLngZoom(sumedang, 13f) }
-    val mapUi = remember { MapUiSettings(zoomControlsEnabled = true, compassEnabled = true, mapToolbarEnabled = true) }
-    val mapProps = remember { MapProperties(mapType = MapType.NORMAL) }
+    val coordinates = vm.customers.mapNotNull { c ->
+        val lat = c.latitude
+        val lon = c.longitude
+        if (lat != null && lon != null) LatLng(lat, lon) to c else null
+    }
+    val cameraState = rememberCameraPositionState()
+    LaunchedEffect(coordinates.size) { coordinates.firstOrNull()?.first?.let { cameraState.position = CameraPosition.fromLatLngZoom(it, 15f) } }
     Column(Modifier.fillMaxSize()) {
-        Box(Modifier.fillMaxWidth().height(310.dp).padding(12.dp)) {
-            GoogleMap(modifier = Modifier.fillMaxSize(), cameraPositionState = cameraState, uiSettings = mapUi, properties = mapProps) {
-                vm.customers.take(50).forEach { customer ->
-                    val lat = customer.latitude
-                    val lon = customer.longitude
-                    if (lat != null && lon != null) Marker(state = MarkerState(position = LatLng(lat, lon)), title = customer.name ?: "Pelanggan", snippet = customer.customerNo)
+        GoogleMap(Modifier.fillMaxWidth().height(320.dp).padding(16.dp), cameraPositionState = cameraState, properties = MapProperties(mapType = MapType.NORMAL), uiSettings = MapUiSettings(zoomControlsEnabled = true, myLocationButtonEnabled = false)) {
+            coordinates.forEach { (position, customer) -> Marker(state = MarkerState(position), title = customer.name ?: customer.customerNo, snippet = customer.customerNo) }
+        }
+        LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
+            item { Text("${coordinates.size} pelanggan terplot dari data koordinat", color = Color.White.copy(alpha = .62f)) }
+            items(vm.customers.take(25)) { c ->
+                GlassCard(Modifier.fillMaxWidth()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) { Text(c.name ?: "Pelanggan", color = Color.White, fontWeight = FontWeight.Bold); Text("${c.latitude ?: "-"}, ${c.longitude ?: "-"}", color = Color.White.copy(alpha = .55f), style = MaterialTheme.typography.bodySmall) }
+                        IconButton(onClick = { openMap(c, context) }) { Icon(Icons.Default.Navigation, "Navigasi", tint = Accent) }
+                    }
                 }
             }
-        }
-        LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
-            item { Text("Peta pelanggan • ${vm.customers.size} hasil", color = Color.White.copy(alpha = .62f)) }
-            items(vm.customers.take(20)) { c -> GlassCard(Modifier.fillMaxWidth()) { Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.LocationOn, null, tint = Accent); Spacer(Modifier.width(8.dp)); Column(Modifier.weight(1f)) { Text(c.name ?: "Pelanggan", color = Color.White, fontWeight = FontWeight.SemiBold); Text("${c.latitude ?: "-"}, ${c.longitude ?: "-"}", color = Color.White.copy(alpha = .55f), style = MaterialTheme.typography.bodySmall) }; TextButton(onClick = { openMap(c, context) }) { Text("Navigasi") } } } }
         }
     }
 }
@@ -452,7 +461,7 @@ private fun MapPage(vm: V4ViewModel) {
 @Composable
 private fun ProfilePage(vm: V4ViewModel, open: (SubPage) -> Unit) {
     LazyColumn(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
-        item { GlassCard(Modifier.fillMaxWidth()) { Row(verticalAlignment = Alignment.CenterVertically) { Surface(shape = CircleShape, color = Accent.copy(alpha = .17f)) { Icon(Icons.Default.Person, null, tint = Accent, modifier = Modifier.padding(12.dp).size(38.dp)) }; Spacer(Modifier.width(12.dp)); Column { Text(vm.user.name, color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black); Text("Biller • UP3 Sumedang", color = Color.White.copy(alpha = .62f)); Text(vm.user.email, color = Cyan, style = MaterialTheme.typography.bodySmall) } } } }
+        item { GlassCard(Modifier.fillMaxWidth()) { Row(verticalAlignment = Alignment.CenterVertically) { Box(Modifier.size(66.dp).background(Cyan.copy(alpha = .18f), CircleShape), contentAlignment = Alignment.Center) { Icon(Icons.Default.Person, null, tint = Cyan, modifier = Modifier.size(38.dp)) }; Spacer(Modifier.width(12.dp)); Column { Text(vm.user.name, color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black); Text("Biller • UP3 Sumedang", color = Color.White.copy(alpha = .65f)) } } } }
         item { ActionRow("Laporan & Ranking", Icons.Default.Leaderboard) { open(SubPage.REPORT) } }
         item { ActionRow("Pengaturan", Icons.Default.Settings) { open(SubPage.SETTINGS) } }
         item { ActionRow("PDIL", Icons.Default.EditNote) { open(SubPage.PDIL) } }
@@ -460,168 +469,100 @@ private fun ProfilePage(vm: V4ViewModel, open: (SubPage) -> Unit) {
         item { ActionRow("Pembayaran Simulasi", Icons.Default.Payment) { open(SubPage.PAYMENT) } }
         item { ActionRow("PLN Prabayar / Token", Icons.Default.Bolt) { open(SubPage.TOKEN) } }
         item { ActionRow("Tentang Smart Biller", Icons.Default.Info) { open(SubPage.ABOUT) } }
-        item { Text("Mode review aman untuk demo. Data master Excel tetap menjadi sumber utama di backend.", color = Color.White.copy(alpha = .55f), style = MaterialTheme.typography.bodySmall) }
     }
 }
 
 @Composable private fun ActionRow(title: String, icon: ImageVector, onClick: () -> Unit) = GlassCard(Modifier.fillMaxWidth()) { Row(verticalAlignment = Alignment.CenterVertically) { Icon(icon, null, tint = Accent); Spacer(Modifier.width(12.dp)); Text(title, color = Color.White, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f)); TextButton(onClick = onClick) { Text("Buka") } } }
 
-@Composable
-private fun SettingsPage(vm: V4ViewModel, context: Context) {
-    SubPageScaffold("Pengaturan", vm) {
-        SettingRow("Notifikasi jatuh tempo", Icons.Default.Notifications, vm.notificationEnabled) { vm.notificationEnabled = it }
-        SettingRow("Sinkronisasi otomatis", Icons.Default.Sync, vm.autoSyncEnabled) { vm.autoSyncEnabled = it; vm.reload() }
-        SettingRow("Mode offline", Icons.Default.CloudOff, vm.offlineEnabled) { vm.offlineEnabled = it }
-        SettingRow("Mode gelap / glass", Icons.Default.Visibility, vm.darkEnabled) { vm.darkEnabled = it }
-        ActionRow("Sinkronisasi sekarang", Icons.Default.Refresh) { vm.reload() }
-        ActionRow("Status API / Supabase", Icons.Default.Sync) { Toast.makeText(context, "Review API aktif", Toast.LENGTH_SHORT).show() }
+@Composable private fun SettingsPage(vm: V4ViewModel, context: Context) = SimpleListPage("Pengaturan", vm) {
+    SettingSwitch("Notifikasi jatuh tempo", vm.notificationEnabled) { vm.notificationEnabled = it }
+    SettingSwitch("Sinkronisasi otomatis", vm.autoSyncEnabled) { vm.autoSyncEnabled = it; vm.reload() }
+    SettingSwitch("Mode offline", vm.offlineEnabled) { vm.offlineEnabled = it }
+    SettingSwitch("Mode gelap", vm.darkEnabled) { vm.darkEnabled = it }
+    ActionButton("Sinkronkan sekarang") { vm.reload(); Toast.makeText(context, "Sinkronisasi review selesai", Toast.LENGTH_SHORT).show() }
+}
+@Composable private fun SettingSwitch(title: String, checked: Boolean, onChanged: (Boolean) -> Unit) { Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) { Text(title, color = Color.White, modifier = Modifier.weight(1f)); Switch(checked, onChanged) } }
+@Composable private fun ActionButton(title: String, onClick: () -> Unit) { Button(onClick = onClick, modifier = Modifier.fillMaxWidth()) { Text(title) } }
+
+@Composable private fun ReportPage(vm: V4ViewModel, context: Context) = SimpleListPage("Laporan & Ranking", vm) {
+    Text("Preventif ${vm.preventive()} • Korektif ${vm.corrective()} • Irisan ${vm.intersection()}", color = Color.White)
+    Text("Bayar ${vm.paid()} • Belum ${vm.unpaid()} • Lewat ${vm.overdue()}", color = Color.White.copy(alpha = .70f))
+    ActionButton("Export PDF") { exportReport(context, vm) }
+}
+
+@Composable private fun PdilPage(vm: V4ViewModel) = SimpleListPage("PDIL", vm) { listOf("DRAFT", "SUBMITTED", "VERIFIED", "APPROVED", "SYNCED").forEach { Text(it, color = Color.White.copy(alpha = .82f), modifier = Modifier.padding(vertical = 6.dp)) } }
+
+@Composable private fun EvidencePage(vm: V4ViewModel) {
+    var photo by remember { mutableStateOf<Bitmap?>(null) }
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bmp -> photo = bmp }
+    SimpleListPage("Foto & Evidence", vm) {
+        Button(onClick = { launcher.launch(null) }, modifier = Modifier.fillMaxWidth()) { Text("Ambil Foto Meter / Lokasi") }
+        photo?.let { Image(bitmap = it.asImageBitmap(), contentDescription = "Evidence", modifier = Modifier.fillMaxWidth().height(220.dp)) }
+        Text("Evidence lokal siap untuk review.", color = Color.White.copy(alpha = .68f))
     }
 }
 
-@Composable private fun SettingRow(title: String, icon: ImageVector, value: Boolean, onChange: (Boolean) -> Unit) = GlassCard(Modifier.fillMaxWidth()) { Row(verticalAlignment = Alignment.CenterVertically) { Icon(icon, null, tint = Accent); Spacer(Modifier.width(12.dp)); Text(title, color = Color.White, modifier = Modifier.weight(1f)); Switch(checked = value, onCheckedChange = onChange) } }
-
-@Composable
-private fun ReportPage(vm: V4ViewModel, context: Context) {
-    SubPageScaffold("Laporan & Ranking", vm) {
-        ReportMetric("Preventif", vm.preventive(), Cyan)
-        ReportMetric("Korektif", vm.corrective(), Red)
-        ReportMetric("Irisan", vm.intersection(), Accent)
-        ReportMetric("Sudah Bayar", vm.paid(), Green)
-        ReportMetric("Belum Bayar", vm.unpaid(), Accent)
-        ReportMetric("Lewat Tempo", vm.overdue(), Red)
-        Button(onClick = { exportReport(context, vm) }, modifier = Modifier.fillMaxWidth()) { Text("Export PDF") }
-    }
-}
-
-@Composable private fun ReportMetric(label: String, value: Int, color: Color) = GlassCard(Modifier.fillMaxWidth()) { Row(verticalAlignment = Alignment.CenterVertically) { Text(label, color = Color.White, modifier = Modifier.weight(1f)); Text("$value", color = color, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black) } }
-
-@Composable
-private fun PdilPage(vm: V4ViewModel) {
-    var status by rememberSaveable { mutableStateOf("DRAFT") }
-    SubPageScaffold("PDIL", vm) {
-        GlassCard(Modifier.fillMaxWidth()) { Text("Workflow PDIL", color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold); Text("DRAFT → SUBMITTED → VERIFIED → APPROVED → SYNCED", color = Cyan, style = MaterialTheme.typography.bodySmall); Text("Status: $status", color = Accent, modifier = Modifier.padding(top = 10.dp)) }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { Button(onClick = { status = "SUBMITTED" }, modifier = Modifier.weight(1f)) { Text("Submit") }; Button(onClick = { status = "VERIFIED" }, modifier = Modifier.weight(1f)) { Text("Verify") } }
-        Button(onClick = { status = "APPROVED / SYNCED" }, modifier = Modifier.fillMaxWidth()) { Text("Approve & Sync") }
-    }
-}
-
-@Composable
-private fun EvidencePage(vm: V4ViewModel) {
-    var captured by remember { mutableStateOf<Bitmap?>(null) }
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { captured = it }
-    val context = LocalContext.current
-    SubPageScaffold("Foto & Evidence", vm) {
-        GlassCard(Modifier.fillMaxWidth()) {
-            Text("Evidence Kunjungan", color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text("Ambil foto meter, lokasi, atau kunjungan.", color = Color.White.copy(alpha = .62f))
-            Spacer(Modifier.height(12.dp))
-            Button(onClick = { launcher.launch(null) }, modifier = Modifier.fillMaxWidth()) { Text("Buka Kamera") }
-            captured?.let { bitmap ->
-                Spacer(Modifier.height(12.dp))
-                Image(bitmap.asImageBitmap(), null, modifier = Modifier.fillMaxWidth().height(220.dp))
-                TextButton(onClick = { Toast.makeText(context, "Evidence tersimpan untuk review", Toast.LENGTH_SHORT).show() }) { Text("Simpan Evidence") }
-            }
-        }
-    }
-}
-
-@Composable
-private fun PaymentPage(vm: V4ViewModel, context: Context) {
+@Composable private fun PaymentPage(vm: V4ViewModel, context: Context) = SimpleListPage("Pembayaran Simulasi", vm) {
     val bill = vm.selectedBill
-    SubPageScaffold("Pembayaran Simulasi", vm) {
-        if (bill == null) {
-            Text("Pilih tagihan dari menu Tagihan.", color = Color.White.copy(alpha = .65f))
-            Button(onClick = { vm.subPage = SubPage.NONE }, modifier = Modifier.fillMaxWidth()) { Text("Kembali ke Tagihan") }
-        } else {
-            GlassCard(Modifier.fillMaxWidth()) { Text(bill.customer.name ?: "Pelanggan", color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold); Text(bill.customer.customerNo, color = Color.White.copy(alpha = .58f)); Text("Periode ${bill.period}", color = Cyan); Text(rupiah(bill.total), color = Accent, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black) }
-            if (vm.paymentRef == null) Button(onClick = { vm.simulatePayment() }, modifier = Modifier.fillMaxWidth()) { Text("Bayar Simulasi") } else {
-                GlassCard(Modifier.fillMaxWidth()) { Text("Pembayaran berhasil (DEMO)", color = Green, fontWeight = FontWeight.Black); Text("Reference: ${vm.paymentRef}", color = Color.White); Text("Status: PAID", color = Green) }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { Button(onClick = { shareText(context, "Smart Biller\nIDPEL: ${bill.customer.customerNo}\nReference: ${vm.paymentRef}\nStatus: PAID") }, modifier = Modifier.weight(1f)) { Icon(Icons.Default.Share, null); Spacer(Modifier.width(6.dp)); Text("Bagikan") }; Button(onClick = { vm.subPage = SubPage.NONE; vm.paymentRef = null }, modifier = Modifier.weight(1f)) { Text("Selesai") } }
-            }
-        }
+    Text(bill?.customer?.name ?: "Belum ada tagihan dipilih", color = Color.White, fontWeight = FontWeight.Bold)
+    bill?.let {
+        Text("Total ${rupiah(it.total)}", color = Accent, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+        Text("Periode ${it.period} • ${it.category}", color = Color.White.copy(alpha = .65f))
+        ActionButton("Simulasikan Pembayaran") { vm.simulatePayment(); Toast.makeText(context, "Pembayaran demo berhasil", Toast.LENGTH_SHORT).show() }
+    }
+    vm.paymentRef?.let { ref -> Text("Reference: $ref", color = Green, fontWeight = FontWeight.Bold) }
+}
+
+@Composable private fun TokenPage(vm: V4ViewModel, context: Context) = SimpleListPage("PLN Prabayar / Token", vm) {
+    Text("Token demo untuk review UI", color = Color.White.copy(alpha = .72f))
+    ActionButton("Generate Token Demo") { vm.generateToken() }
+    vm.tokenValue?.let { Text("Token: $it", color = Accent, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black) }
+    ActionButton("Salin Token") {
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Smart Biller Token", vm.tokenValue.orEmpty()))
+        Toast.makeText(context, "Token disalin", Toast.LENGTH_SHORT).show()
     }
 }
 
-@Composable
-private fun TokenPage(vm: V4ViewModel, context: Context) {
-    var amount by rememberSaveable { mutableStateOf("100000") }
-    SubPageScaffold("PLN Prabayar / Token", vm) {
-        GlassCard(Modifier.fillMaxWidth()) {
-            Text("Token Demo", color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text("Simulasi pembelian token untuk review UI.", color = Color.White.copy(alpha = .62f))
-            Spacer(Modifier.height(10.dp))
-            OutlinedTextField(amount, { amount = it.filter(Char::isDigit) }, label = { Text("Nominal") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-            Spacer(Modifier.height(10.dp))
-            Button(onClick = { vm.generateToken() }, modifier = Modifier.fillMaxWidth()) { Text("Generate Token Demo") }
-            vm.tokenValue?.let { code ->
-                Text("Token: $code", color = Accent, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, modifier = Modifier.padding(top = 10.dp))
-                TextButton(onClick = { shareText(context, "Token Smart Biller Demo: $code\nNominal: Rp $amount") }) { Text("Bagikan Token") }
-            }
-        }
-    }
-}
+@Composable private fun AboutPage(vm: V4ViewModel) = SimpleListPage("Tentang Smart Biller", vm) { Text("Kotlin + Jetpack Compose + Material 3", color = Color.White); Text("Glassmorphism • Supabase • Google Maps", color = Color.White.copy(alpha = .72f)); Text("Smart Biller V4", color = Accent, fontWeight = FontWeight.Bold) }
 
-@Composable private fun AboutPage(vm: V4ViewModel) = SubPageScaffold("Tentang Smart Biller", vm) {
-    GlassCard(Modifier.fillMaxWidth()) {
-        Text("Smart Biller V4", color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
-        Text("Aplikasi biller PLN modern untuk monitoring, edukasi, pelayanan, inquiry, peta, laporan dan review pembayaran.", color = Color.White.copy(alpha = .68f), modifier = Modifier.padding(top = 8.dp))
-        FeatureLine("Kotlin + Jetpack Compose + Material 3")
-        FeatureLine("Glassmorphism • Responsive Smartphone & Tablet")
-        FeatureLine("Supabase Edge Function + mode review offline")
-        FeatureLine("Google Maps SDK + marker pelanggan")
-        FeatureLine("Database master Excel 1.328 pelanggan")
-    }
-}
-
-@Composable private fun FeatureLine(text: String) { Row(Modifier.fillMaxWidth().padding(top = 8.dp)) { Text("•", color = Accent, fontWeight = FontWeight.Black); Spacer(Modifier.width(8.dp)); Text(text, color = Color.White.copy(alpha = .75f)) } }
-
-@Composable private fun SubPageScaffold(title: String, vm: V4ViewModel, content: @Composable ColumnScope.() -> Unit) {
-    LazyColumn(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
-        item { TextButton(onClick = { vm.subPage = SubPage.NONE }) { Icon(Icons.Default.ArrowBack, null); Spacer(Modifier.width(4.dp)); Text("Kembali") } }
-        item { Text(title, color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black) }
-        item { Column(verticalArrangement = Arrangement.spacedBy(10.dp), content = content) }
+@Composable private fun SimpleListPage(title: String, vm: V4ViewModel, content: @Composable ColumnScope.() -> Unit) {
+    Column(Modifier.fillMaxSize().padding(16.dp)) {
+        TextButton(onClick = { vm.subPage = SubPage.NONE }) { Text("← Kembali") }
+        LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 24.dp)) { item { GlassCard(Modifier.fillMaxWidth(), content) } }
     }
 }
 
 @Composable private fun InquiryDialog(response: InquiryResponse, onDismiss: () -> Unit) {
-    AlertDialog(onDismissRequest = onDismiss, confirmButton = { TextButton(onClick = onDismiss) { Text("Tutup") } }, title = { Text("Detail Pelanggan") }, text = { Column { Text(response.customer.name ?: "Pelanggan"); Text(response.customer.customerNo); Text("Periode: ${response.billing.periode}"); Text("Tagihan: ${rupiah(response.billing.amount)}"); Text("Inquiry: ${response.inquiry.id} • ${response.inquiry.status}") } })
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("Inquiry Pelanggan") }, text = { Column(verticalArrangement = Arrangement.spacedBy(6.dp)) { Text(response.customer.name ?: "Pelanggan"); Text(response.customer.customerNo); Text("Periode ${response.billing.periode}"); Text(rupiah(response.billing.amount)); Text("Reference ${response.inquiry.id}") } }, confirmButton = { TextButton(onClick = onDismiss) { Text("Tutup") } })
 }
+
+private fun rupiah(value: Double): String = NumberFormat.getCurrencyInstance(Locale("id", "ID")).format(value).replace(",00", "").replace("Rp", "Rp ")
 
 private fun openMap(customer: Customer, context: Context) {
     val lat = customer.latitude ?: return
     val lon = customer.longitude ?: return
-    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("geo:$lat,$lon?q=$lat,$lon"))
-    runCatching { context.startActivity(intent) }.onFailure { Toast.makeText(context, "Aplikasi peta tidak tersedia", Toast.LENGTH_SHORT).show() }
-}
-
-private fun shareText(context: Context, text: String) {
-    val intent = Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, text) }
-    context.startActivity(Intent.createChooser(intent, "Bagikan"))
+    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("geo:$lat,$lon?q=$lat,$lon")))
 }
 
 private fun exportReport(context: Context, vm: V4ViewModel) {
     val document = PdfDocument()
     val page = document.startPage(PdfDocument.PageInfo.Builder(595, 842, 1).create())
-    val paint = Paint().apply { textSize = 18f; color = android.graphics.Color.BLACK }
-    page.canvas.drawText("Smart Biller V4 - Laporan", 32f, 48f, paint)
-    paint.textSize = 12f
-    val rows = listOf("Pelanggan master: ${CustomerSeed.masterRecordCount}", "Preventif: ${vm.preventive()}", "Korektif: ${vm.corrective()}", "Irisan: ${vm.intersection()}", "Sudah Bayar: ${vm.paid()}", "Belum Bayar: ${vm.unpaid()}", "Lewat Tempo: ${vm.overdue()}")
-    rows.forEachIndexed { index, row -> page.canvas.drawText(row, 32f, 86f + index * 26f, paint) }
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 18f }
+    page.canvas.drawText("Smart Biller V4 - Laporan", 40f, 60f, paint)
+    paint.textSize = 13f
+    page.canvas.drawText("Preventif: ${vm.preventive()}", 40f, 100f, paint)
+    page.canvas.drawText("Korektif: ${vm.corrective()}", 40f, 125f, paint)
+    page.canvas.drawText("Irisan: ${vm.intersection()}", 40f, 150f, paint)
+    page.canvas.drawText("Sudah Bayar: ${vm.paid()}", 40f, 175f, paint)
+    page.canvas.drawText("Belum Bayar: ${vm.unpaid()}", 40f, 200f, paint)
+    page.canvas.drawText("Lewat Tempo: ${vm.overdue()}", 40f, 225f, paint)
     document.finishPage(page)
-    val fileName = "SmartBiller_${System.currentTimeMillis()}.pdf"
-    runCatching {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val resolver = context.contentResolver
-            val values = ContentValues().apply { put(MediaStore.Downloads.DISPLAY_NAME, fileName); put(MediaStore.Downloads.MIME_TYPE, "application/pdf"); put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS) }
-            val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) ?: error("Gagal membuat file")
-            resolver.openOutputStream(uri)?.use { document.writeTo(it) }
-        } else {
-            val file = java.io.File(context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), fileName)
-            file.outputStream().use { document.writeTo(it) }
-        }
-        Toast.makeText(context, "PDF berhasil dibuat", Toast.LENGTH_LONG).show()
-    }.onFailure { Toast.makeText(context, "Export gagal: ${it.message}", Toast.LENGTH_LONG).show() }
+    val fileName = "SmartBiller-Laporan-${System.currentTimeMillis()}.pdf"
+    if (Build.VERSION.SDK_INT >= 29) {
+        val values = ContentValues().apply { put(MediaStore.Downloads.DISPLAY_NAME, fileName); put(MediaStore.Downloads.MIME_TYPE, "application/pdf"); put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS) }
+        context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)?.let { uri -> context.contentResolver.openOutputStream(uri)?.use { document.writeTo(it) } }
+    }
     document.close()
+    Toast.makeText(context, "Laporan diekspor ke Download", Toast.LENGTH_SHORT).show()
 }
-
-private fun rupiah(value: Double): String = NumberFormat.getCurrencyInstance(Locale("id", "ID")).format(value).replace(",00", "")
