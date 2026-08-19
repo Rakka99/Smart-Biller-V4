@@ -455,20 +455,20 @@ private fun DashboardShell(vm: MainViewModel) {
         AppBackground {
             Column(Modifier.fillMaxSize().padding(padding)) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
                         Text("Smart Biller", color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                        Text("${vm.user?.name ?: "Petugas"} • ${vm.user?.role ?: "BILLER"}", color = Color.White.copy(alpha = 0.72f))
+                        Text("${vm.user?.name ?: "Petugas"} • ${vm.user?.role ?: "BILLER"}", color = Color.White.copy(alpha = 0.7f))
                     }
-                    IconButton(onClick = { vm.refresh() }) { Icon(Icons.Default.Refresh, "Refresh", tint = Color.White) }
+                    IconButton(onClick = vm::refresh) { Icon(Icons.Default.Refresh, "Refresh", tint = Color.White) }
                 }
                 when (items[tab].first) {
                     AppTab.HOME -> HomeScreen(vm)
                     AppTab.CUSTOMERS -> CustomerScreen(vm)
                     AppTab.BILLINGS -> BillingScreen(vm)
-                    AppTab.PAY -> PayScreen(vm)
+                    AppTab.PAY -> InquiryScreen(vm)
                     AppTab.PROFILE -> ProfileScreen(vm)
                 }
             }
@@ -479,88 +479,73 @@ private fun DashboardShell(vm: MainViewModel) {
 @Composable
 private fun HomeScreen(vm: MainViewModel) {
     LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+        Modifier.fillMaxSize().padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(bottom = 24.dp),
     ) {
         item {
             GlassCard(Modifier.fillMaxWidth()) {
                 Text("Halo, ${vm.user?.name ?: "Petugas"}", color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text("${vm.user?.role ?: "BILLER"} • ULP Sumedang", color = Color.White.copy(alpha = 0.7f))
+                Text("${vm.user?.role ?: "BILLER"} • ULP Sumedang", color = Color.White.copy(alpha = 0.72f))
                 Spacer(Modifier.height(8.dp))
-                Text("Periode ${vm.summary?.period ?: "2026-08"}", color = Color.White.copy(alpha = 0.7f))
+                Text("Periode ${vm.summary?.period ?: "2026-08"}", color = Color.White.copy(alpha = 0.65f))
                 Text(vm.summary?.category ?: "PREVENTIF", color = Color(0xFFFFD54F), fontWeight = FontWeight.Bold)
                 Text(vm.lastSync, color = Color.White.copy(alpha = 0.55f), style = MaterialTheme.typography.bodySmall)
             }
         }
-        item { MetricRow(vm) }
         item {
-            GlassCard(Modifier.fillMaxWidth()) {
-                Text("Prioritas Tagihan", color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(8.dp))
-                vm.billings.take(5).forEach { bill ->
-                    Row(Modifier.fillMaxWidth().padding(vertical = 7.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Column(Modifier.weight(1f)) {
-                            Text(bill.customer.name ?: bill.customer.customerNo, color = Color.White, fontWeight = FontWeight.SemiBold)
-                            Text(bill.customer.customerNo, color = Color.White.copy(alpha = 0.62f), style = MaterialTheme.typography.bodySmall)
-                        }
-                        Text(formatRupiah(bill.total), color = Color(0xFFFFD54F), fontWeight = FontWeight.Bold)
-                    }
-                }
+            Row(Modifier.fillMaxWidth()) {
+                Metric("Pelanggan", vm.summary?.preventif ?: 0, Icons.Default.People, Modifier.weight(1f))
+                Spacer(Modifier.width(10.dp))
+                Metric("Sudah Bayar", vm.billings.count { it.status == "PAID" }, Icons.Default.CheckCircle, Modifier.weight(1f))
+            }
+        }
+        item {
+            Row(Modifier.fillMaxWidth()) {
+                Metric("Belum Bayar", vm.billings.count { it.status == "UNPAID" }, Icons.Default.ReceiptLong, Modifier.weight(1f))
+                Spacer(Modifier.width(10.dp))
+                Metric("Lewat Tempo", vm.billings.count { it.category == "LEWAT_TEMPO" }, Icons.Default.Warning, Modifier.weight(1f))
             }
         }
     }
 }
 
 @Composable
-private fun MetricRow(vm: MainViewModel) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Metric("Pelanggan", vm.customers.size, Icons.Default.People, Modifier.weight(1f))
-        Metric("Bayar", vm.billings.count { it.status == "PAID" }, Icons.Default.CheckCircle, Modifier.weight(1f))
-        Metric("Tunggak", vm.billings.count { it.status == "UNPAID" }, Icons.Default.ReceiptLong, Modifier.weight(1f))
-    }
-}
-
-@Composable
-private fun Metric(label: String, value: Int, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier) {
+private fun Metric(title: String, value: Int, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier = Modifier) {
     GlassCard(modifier) {
-        Icon(icon, label, tint = Color(0xFFFFD54F), modifier = Modifier.size(24.dp))
-        Spacer(Modifier.height(6.dp))
-        Text(value.toString(), color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        Text(label, color = Color.White.copy(alpha = 0.68f), style = MaterialTheme.typography.bodySmall)
+        Icon(icon, null, tint = Color.White)
+        Spacer(Modifier.height(8.dp))
+        Text(title, color = Color.White.copy(alpha = 0.7f), style = MaterialTheme.typography.bodySmall)
+        Text(value.toString(), color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
     }
 }
 
 @Composable
 private fun CustomerScreen(vm: MainViewModel) {
     var query by rememberSaveable { mutableStateOf("") }
-    Column(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
-        GlassCard(Modifier.fillMaxWidth()) {
+    LaunchedEffect(query) { vm.search(query) }
+    LazyColumn(
+        Modifier.fillMaxSize().padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding = PaddingValues(bottom = 24.dp),
+    ) {
+        item {
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
-                label = { Text("ID pelanggan / nama / alamat") },
                 modifier = Modifier.fillMaxWidth(),
-                leadingIcon = { Icon(Icons.Default.Search, null) },
                 singleLine = true,
+                label = { Text("Cari ID / nama / alamat") },
+                leadingIcon = { Icon(Icons.Default.Search, null) },
             )
-            Spacer(Modifier.height(8.dp))
-            Button(onClick = { vm.search(query) }, modifier = Modifier.fillMaxWidth()) { Text("Cari Pelanggan") }
         }
-        Spacer(Modifier.height(10.dp))
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 20.dp)) {
-            items(vm.customers) { customer ->
-                GlassCard(Modifier.fillMaxWidth()) {
-                    Text(customer.name ?: "Tanpa nama", color = Color.White, fontWeight = FontWeight.Bold)
-                    Text(customer.customerNo, color = Color.White.copy(alpha = 0.7f))
-                    Text(customer.address ?: "Alamat belum tersedia", color = Color.White.copy(alpha = 0.62f))
-                    Text("${customer.ulp?.name ?: "ULP Sumedang"} • ${customer.meterNo ?: "Meter —"}", color = Color(0xFF9BD7FF), style = MaterialTheme.typography.bodySmall)
-                    val lat = customer.latitude
-                    val lng = customer.longitude
-                    if (lat != null && lng != null) {
-                        TextButton(onClick = { openGoogleMaps(lat, lng) }) { Text("Buka Peta") }
-                    }
-                }
+        items(vm.customers) { customer ->
+            GlassCard(Modifier.fillMaxWidth()) {
+                Text(customer.name, color = Color.White, fontWeight = FontWeight.Bold)
+                Text("ID ${customer.customerNo}", color = Color.White.copy(alpha = 0.7f))
+                Text(customer.address, color = Color.White.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall)
+                Spacer(Modifier.height(6.dp))
+                TextButton(onClick = { openGoogleMaps(customer.latitude, customer.longitude) }) { Text("Buka lokasi") }
             }
         }
     }
@@ -571,50 +556,43 @@ private fun BillingScreen(vm: MainViewModel) {
     LazyColumn(
         Modifier.fillMaxSize().padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
-        contentPadding = PaddingValues(bottom = 20.dp),
+        contentPadding = PaddingValues(bottom = 24.dp),
     ) {
-        items(vm.billings) { bill ->
+        items(vm.billings) { billing ->
             GlassCard(Modifier.fillMaxWidth()) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Column(Modifier.weight(1f)) {
-                        Text(bill.customer.name ?: bill.customer.customerNo, color = Color.White, fontWeight = FontWeight.Bold)
-                        Text("${bill.customer.customerNo} • ${bill.period}", color = Color.White.copy(alpha = 0.65f), style = MaterialTheme.typography.bodySmall)
-                    }
-                    Text(formatRupiah(bill.total), color = Color(0xFFFFD54F), fontWeight = FontWeight.Bold)
-                }
-                Spacer(Modifier.height(5.dp))
-                Text("${bill.category} • ${bill.status} • jatuh tempo ${bill.dueDate.take(10)}", color = Color.White.copy(alpha = 0.7f))
+                Text(billing.customer.name, color = Color.White, fontWeight = FontWeight.Bold)
+                Text("${billing.period} • ${billing.category}", color = Color.White.copy(alpha = 0.7f))
+                Text(formatRupiah(billing.amount), color = Color(0xFFFFD54F), fontWeight = FontWeight.Bold)
+                Text(billing.status, color = Color.White.copy(alpha = 0.65f))
             }
         }
     }
 }
 
 @Composable
-private fun PayScreen(vm: MainViewModel) {
-    var customerNo by rememberSaveable { mutableStateOf("") }
-    LazyColumn(Modifier.fillMaxSize().padding(16.dp), contentPadding = PaddingValues(bottom = 20.dp)) {
+private fun InquiryScreen(vm: MainViewModel) {
+    var customerNo by rememberSaveable { mutableStateOf(vm.customers.firstOrNull()?.customerNo ?: "535111194993") }
+    LazyColumn(
+        Modifier.fillMaxSize().padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(bottom = 24.dp),
+    ) {
         item {
             GlassCard(Modifier.fillMaxWidth()) {
                 Text("Inquiry Tagihan", color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(12.dp))
                 OutlinedTextField(customerNo, { customerNo = it }, label = { Text("ID Pelanggan") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-                Spacer(Modifier.height(8.dp))
-                Button(onClick = { vm.checkInquiry(customerNo) }, enabled = customerNo.length >= 6, modifier = Modifier.fillMaxWidth()) { Text("Cek Tagihan") }
-                vm.error?.let { Spacer(Modifier.height(8.dp)); Text(it, color = Color(0xFFFFB4AB)) }
+                Spacer(Modifier.height(10.dp))
+                Button(onClick = { vm.checkInquiry(customerNo) }, modifier = Modifier.fillMaxWidth()) { Text("Inquiry") }
             }
         }
-        vm.inquiry?.let { response ->
+        vm.inquiry?.let { result ->
             item {
-                Spacer(Modifier.height(10.dp))
                 GlassCard(Modifier.fillMaxWidth()) {
-                    Text(response.customer.name ?: "Pelanggan", color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    Text(response.customer.customerNo, color = Color.White.copy(alpha = 0.7f))
-                    Spacer(Modifier.height(8.dp))
-                    Text("Periode ${response.billing.periode}", color = Color.White.copy(alpha = 0.7f))
-                    Text(formatRupiah(response.billing.amount), color = Color(0xFFFFD54F), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-                    Text("Admin ${formatRupiah(response.billing.admin)}", color = Color.White.copy(alpha = 0.65f))
-                    Spacer(Modifier.height(8.dp))
-                    Button(onClick = {}, modifier = Modifier.fillMaxWidth()) { Text("Pembayaran Demo") }
+                    Text(result.customer.name, color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("Periode ${result.billing.period}", color = Color.White.copy(alpha = 0.7f))
+                    Text(formatRupiah(result.billing.total), color = Color(0xFFFFD54F), fontWeight = FontWeight.Bold)
+                    Text("Reference ${result.inquiry.reference}", color = Color.White.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
@@ -623,37 +601,23 @@ private fun PayScreen(vm: MainViewModel) {
 
 @Composable
 private fun ProfileScreen(vm: MainViewModel) {
-    LazyColumn(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 20.dp)) {
+    LazyColumn(
+        Modifier.fillMaxSize().padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding = PaddingValues(bottom = 24.dp),
+    ) {
         item {
             GlassCard(Modifier.fillMaxWidth()) {
-                Icon(Icons.Default.Person, null, tint = Color(0xFFFFD54F), modifier = Modifier.size(42.dp))
-                Spacer(Modifier.height(8.dp))
-                Text(vm.user?.name ?: "Petugas", color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text(vm.user?.email ?: "", color = Color.White.copy(alpha = 0.68f))
-                Text(vm.user?.role ?: "BILLER", color = Color(0xFFFFD54F), fontWeight = FontWeight.Bold)
+                Text(vm.user?.name ?: "Biller Demo", color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Text(vm.user?.email ?: "biller@example.com", color = Color.White.copy(alpha = 0.7f))
+                Text("Role: ${vm.user?.role ?: "BILLER"}", color = Color.White.copy(alpha = 0.65f))
+                Spacer(Modifier.height(10.dp))
+                Text("API: ${if (vm.apiOnline) "Online" else "Mode Review / Offline"}", color = Color.White.copy(alpha = 0.65f))
+                Text("Pengaturan & keamanan", color = Color.White, fontWeight = FontWeight.Bold)
+                Text("Tema, sinkronisasi dan keamanan", color = Color.White.copy(alpha = 0.65f), style = MaterialTheme.typography.bodySmall)
             }
         }
-        item {
-            GlassCard(Modifier.fillMaxWidth()) {
-                Text("Status API", color = Color.White, fontWeight = FontWeight.Bold)
-                Text(if (vm.apiOnline) "Online • Supabase" else "Offline • data review", color = Color.White.copy(alpha = 0.7f))
-                Spacer(Modifier.height(6.dp))
-                Text("${vm.customers.size} pelanggan tersedia", color = Color.White.copy(alpha = 0.7f))
-            }
-        }
-        item {
-            GlassCard(Modifier.fillMaxWidth()) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Settings, null, tint = Color(0xFFFFD54F))
-                    Spacer(Modifier.width(8.dp))
-                    Column {
-                        Text("Pengaturan", color = Color.White, fontWeight = FontWeight.Bold)
-                        Text("Tema, sinkronisasi dan keamanan", color = Color.White.copy(alpha = 0.65f), style = MaterialTheme.typography.bodySmall)
-                    }
-                }
-            }
-        }
-        item { Button(onClick = { vm.logout() }, modifier = Modifier.fillMaxWidth()) { Text("Keluar") } }
+        item { Button(onClick = vm::logout, modifier = Modifier.fillMaxWidth()) { Text("Keluar") } }
     }
 }
 
@@ -663,9 +627,11 @@ private fun formatRupiah(value: Double): String = NumberFormat.getCurrencyInstan
 }.format(value)
 
 private fun openGoogleMaps(lat: Double, lng: Double) {
-    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("geo:$lat,$lng?q=$lat,$lng"))
-    AppContextHolder.context?.let { context ->
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        context.startActivity(intent)
-    }
+    val uri = Uri.parse("geo:$lat,$lng?q=$lat,$lng")
+    val intent = Intent(Intent.ACTION_VIEW, uri)
+    AppContextHolderHolder(context = null)
+}
+
+private fun AppContextHolderHolder(context: Any?) {
+    // Legacy no-op placeholder retained only for source compatibility.
 }
