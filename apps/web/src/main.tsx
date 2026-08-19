@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import axios from "axios";
 import "./styles.css";
 
-const API = "https://vgnynrzhanfnbifjedga.supabase.co/functions/v1/smart-biller-review-api";
+const API = "https://vgnynrzhanfnbifjedga.supabase.co/functions/v1/smart-biller-review-api-v2";
 const api = axios.create({ baseURL: API });
 
 type Billing = { id:string; period:string; category:string; status:string; total:number; dueDate:string; customer:any };
@@ -26,7 +26,7 @@ function App(){
   async function checkInquiry(){setBusy(true);setError("");try{const {data}=await api.post("/pln/inquiry",{customerNo});setInquiryResult(data);await refresh()}catch(e:any){setError(e.response?.data?.error||"Inquiry gagal")}finally{setBusy(false)}}
   async function pay(){if(!inquiryResult?.inquiry?.id||!confirm("Lanjutkan pembayaran?"))return;setBusy(true);try{await api.post("/payments",{inquiryId:inquiryResult.inquiry.id});await refresh();alert("Pembayaran diproses")}catch(e:any){setError(e.response?.data?.error||"Pembayaran gagal")}finally{setBusy(false)}}
 
-  if(!token)return <main className="login"><form className="login-card" onSubmit={login}><div className="brand">⚡ <b>PLN Monitoring</b></div><p>Masuk ke sistem operasional.</p><input value={email} onChange={e=>setEmail(e.target.value)} type="email" placeholder="Email"/><input value={password} onChange={e=>setPassword(e.target.value)} type="password" placeholder="Password"/>{error&&<div className="error">{error}</div>}<button>Masuk</button></form></main>;
+  if(!token)return <main className="login"><form className="login-card" onSubmit={login}><div className="brand">⚡ <b>PLN Monitoring</b></div><p>Demo review — gunakan admin / supervisor / biller.</p><input value={email} onChange={e=>setEmail(e.target.value)} type="text" placeholder="Email / Username"/><input value={password} onChange={e=>setPassword(e.target.value)} type="password" placeholder="Password"/><small>Demo password: change-me-now</small>{error&&<div className="error">{error}</div>}<button>Masuk</button></form></main>;
 
   const cards=[["PREVENTIF",summary?.preventif??0,"1–20 bulan","preventif"],["KOREKTIF",summary?.korektif??0,"21–akhir bulan","korektif"],["IRISAN",summary?.irisan??0,"lintas bulan","irisan"]];
   return <main className="app">
