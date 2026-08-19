@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import axios from "axios";
 import "./styles.css";
 
-const API = "https://vgnynrzhanfnbifjedga.supabase.co/functions/v1/smart-biller-review-api-v2";
+const API = "https://vgnynrzhanfnbifjedga.supabase.co/functions/v1/smart-biller-review-api-v3";
 const api = axios.create({ baseURL: API });
 
 type Billing = { id:string; period:string; category:string; status:string; total:number; dueDate:string; customer:any };
@@ -13,14 +13,14 @@ const money=(n:number|undefined|null)=>new Intl.NumberFormat("id-ID",{style:"cur
 function App(){
   const [token,setToken]=useState(localStorage.getItem("token"));
   const [user,setUser]=useState<any>(()=>JSON.parse(localStorage.getItem("user")||"null"));
-  const [email,setEmail]=useState("admin@example.com"),[password,setPassword]=useState("change-me-now");
+  const [email,setEmail]=useState("admin"),[password,setPassword]=useState("change-me-now");
   const [tab,setTab]=useState("home"),[summary,setSummary]=useState<any>(null),[billings,setBillings]=useState<Billing[]>([]);
   const [payments,setPayments]=useState<Payment[]>([]),[leader,setLeader]=useState<any[]>([]);
   const [q,setQ]=useState(""),[search,setSearch]=useState<any[]>([]),[error,setError]=useState(""),[busy,setBusy]=useState(false);
   const [customerNo,setCustomerNo]=useState(""),[inquiryResult,setInquiryResult]=useState<any>(null);
 
   useEffect(()=>{if(token){api.defaults.headers.common.Authorization=`Bearer ${token}`;refresh();}},[token]);
-  async function login(e:React.FormEvent){e.preventDefault();setError("");try{const {data}=await api.post("/auth/login",{email,password});localStorage.setItem("token",data.token);localStorage.setItem("user",JSON.stringify(data.user));setToken(data.token);setUser(data.user);}catch(e:any){setError(e.response?.data?.error||"Login gagal")}}
+  async function login(e:React.FormEvent){e.preventDefault();setError("");localStorage.removeItem("token");localStorage.removeItem("user");try{const {data}=await api.post("/auth/login",{email,password});localStorage.setItem("token",data.token);localStorage.setItem("user",JSON.stringify(data.user));api.defaults.headers.common.Authorization=`Bearer ${data.token}`;setToken(data.token);setUser(data.user);}catch(e:any){setError(e.response?.data?.error||"Login gagal")}}
   async function refresh(){try{const [s,b,p,l]=await Promise.all([api.get("/billing/summary"),api.get("/billing?status=UNPAID"),api.get("/payments?limit=8"),api.get("/leaderboard")]);setSummary(s.data);setBillings(b.data.items);setPayments(p.data.items);setLeader(l.data.rows)}catch(e:any){setError(e.response?.data?.error||"Gagal memuat data")}}
   async function doSearch(){if(q.length<2)return;try{const {data}=await api.get("/customers/search",{params:{q}});setSearch(data.items)}catch(e:any){setError(e.response?.data?.error||"Pencarian gagal")}}
   async function checkInquiry(){setBusy(true);setError("");try{const {data}=await api.post("/pln/inquiry",{customerNo});setInquiryResult(data);await refresh()}catch(e:any){setError(e.response?.data?.error||"Inquiry gagal")}finally{setBusy(false)}}
