@@ -40,10 +40,13 @@ jobs:
           packages: 'platform-tools platforms;android-37 build-tools;36.0.0'
 
       - name: Accept Android SDK licenses
+        shell: bash
         run: yes | sdkmanager --licenses >/dev/null || true
 
       - name: Validate project structure
+        shell: bash
         run: |
+          set -euo pipefail
           test -f settings.gradle.kts
           test -f build.gradle.kts
           test -f android-app/build.gradle.kts
@@ -52,26 +55,38 @@ jobs:
           test -f android-app/src/main/java/id/smartbiller/app/MainActivity.kt
 
       - name: Verify toolchain
+        shell: bash
         run: |
+          set -euo pipefail
           java -version
           gradle --version
-          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
-          sdkmanager --list_installed | grep -E 'platform-tools|platforms;android-37|build-tools;36.0.0'
+          echo "ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT:-}"
+          sdkmanager --list_installed
 
-      - name: Gradle configuration check
+      - name: Verify Gradle configuration
+        shell: bash
         run: |
+          set -euo pipefail
           gradle help --stacktrace --no-daemon --no-configuration-cache
-          gradle :android-app:tasks --stacktrace --no-daemon --no-configuration-cache | grep -E 'assembleDebug|compileDebugKotlin'
 
-      - name: Clean build native debug APK
+      - name: Assemble native debug APK
+        shell: bash
         run: |
-          gradle clean :android-app:assembleDebug --stacktrace --no-daemon --warning-mode all --no-configuration-cache
+          set -euo pipefail
+          gradle clean :android-app:assembleDebug \
+            --stacktrace \
+            --no-daemon \
+            --warning-mode all \
+            --no-configuration-cache
 
       - name: Verify APK
+        shell: bash
         run: |
-          test -s android-app/build/outputs/apk/debug/android-app-debug.apk
-          sha256sum android-app/build/outputs/apk/debug/android-app-debug.apk
-          ls -lh android-app/build/outputs/apk/debug/android-app-debug.apk
+          set -euo pipefail
+          APK="android-app/build/outputs/apk/debug/android-app-debug.apk"
+          test -s "$APK"
+          sha256sum "$APK"
+          ls -lh "$APK"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
