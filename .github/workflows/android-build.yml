@@ -14,6 +14,7 @@ concurrency:
 
 env:
   GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.parallel=false
+  JAVA_TOOL_OPTIONS: -Dfile.encoding=UTF-8
 
 jobs:
   build-native-apk:
@@ -29,6 +30,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+          cache: gradle
 
       - name: Setup Gradle 8.13
         uses: gradle/actions/setup-gradle@v6
@@ -36,6 +38,7 @@ jobs:
           gradle-version: '8.13'
           cache-read-only: false
           cache-overwrite-existing: true
+          cache-cleanup: always
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4.0.1
@@ -61,6 +64,7 @@ jobs:
           test -f android-app/build.gradle.kts
           test -f android-app/src/main/AndroidManifest.xml
           test -f android-app/src/main/java/id/smartbiller/app/MainActivity.kt
+          test -f android-app/src/main/java/id/smartbiller/app/ui/theme/Theme.kt
 
       - name: Validate toolchain and Gradle configuration
         shell: bash
@@ -73,15 +77,19 @@ jobs:
           gradle :android-app:help --no-daemon --no-configuration-cache --console=plain
 
       - name: Compile Kotlin sources
+        id: kotlin_compile
         shell: bash
         run: |
-          set -o pipefail
+          set +e
           gradle :android-app:compileDebugKotlin \
             --stacktrace \
             --info \
             --no-daemon \
             --no-configuration-cache \
             --console=plain 2>&1 | tee kotlin-compile.log
+          status=${PIPESTATUS[0]}
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit "$status"
 
       - name: Publish Kotlin compiler errors to job summary
         if: always()
@@ -91,7 +99,7 @@ jobs:
             echo "## Kotlin compiler diagnostics"
             echo
             if [ -f kotlin-compile.log ]; then
-              grep -E '^e: |^w: |^error: |^warning: |^> Task :.* FAILED|^FAILURE: ' kotlin-compile.log | tail -n 120 || true
+              grep -E '^e: |^w: |^error: |^warning: |^> Task :.* FAILED|^FAILURE: ' kotlin-compile.log | tail -n 200 || true
             else
               echo "kotlin-compile.log was not created."
             fi
@@ -103,8 +111,15 @@ jobs:
         with:
           name: smart-biller-kotlin-diagnostics-${{ github.run_number }}
           path: kotlin-compile.log
-          if-no-files-found: ignore
+          if-no-files-found: error
           retention-days: 14
+
+      - name: Stop after Kotlin failure
+        if: steps.kotlin_compile.outputs.status != '0'
+        shell: bash
+        run: |
+          echo "Kotlin compilation failed; APK packaging is intentionally skipped."
+          exit 1
 
       - name: Assemble debug APK
         shell: bash
