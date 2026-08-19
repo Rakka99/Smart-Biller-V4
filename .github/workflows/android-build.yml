@@ -35,14 +35,11 @@ jobs:
           cache-read-only: false
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v4
-
-      - name: Install Android SDK packages
-        shell: bash
-        run: |
-          set -euo pipefail
-          sdkmanager "platform-tools" "platforms;android-36" "build-tools;35.0.0"
-          yes | sdkmanager --licenses >/dev/null || true
+        uses: android-actions/setup-android@v4.0.1
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;35.0.0'
+          accept-android-sdk-licenses: 'true'
+          log-accepted-android-sdk-licenses: 'false'
 
       - name: Validate project
         shell: bash
@@ -61,22 +58,31 @@ jobs:
           set -euo pipefail
           java -version
           gradle --version
-          test -d "${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
-          sdkmanager --list_installed | head -n 80
+          echo "SDK=${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
 
-      - name: Stop stale Gradle daemons
+      - name: Stop Gradle daemons
+        shell: bash
         run: gradle --stop || true
 
-      - name: Resolve and build debug APK
+      - name: Build native debug APK
         shell: bash
         run: |
-          set -euo pipefail
+          set -o pipefail
           gradle :android-app:clean :android-app:assembleDebug \
             --stacktrace \
             --no-daemon \
             --no-configuration-cache \
             --refresh-dependencies \
-            --console=plain
+            --console=plain 2>&1 | tee gradle-build.log
+
+      - name: Upload Gradle diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smart-biller-gradle-diagnostics-${{ github.run_number }}
+          path: gradle-build.log
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Verify APK
         shell: bash
