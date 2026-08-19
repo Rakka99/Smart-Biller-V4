@@ -15,7 +15,7 @@ concurrency:
 jobs:
   build-native-apk:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -55,7 +55,13 @@ jobs:
           gradle --version
           sdkmanager --list_installed | grep -E 'platform-tools|platforms;android-37|build-tools;36.0.0'
 
-      - name: Clean and compile debug APK
+      - name: Gradle configuration check
+        run: |
+          gradle help --stacktrace --no-daemon --warning-mode all --no-configuration-cache
+          gradle :android-app:tasks --stacktrace --no-daemon --warning-mode all --no-configuration-cache >/tmp/smart-biller-tasks.txt
+          grep -E 'assembleDebug|compileDebugKotlin|compileDebugJavaWithJavac' /tmp/smart-biller-tasks.txt
+
+      - name: Clean build native debug APK
         run: |
           gradle clean :android-app:assembleDebug --stacktrace --no-daemon --warning-mode all --no-configuration-cache
 
