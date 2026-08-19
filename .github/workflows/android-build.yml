@@ -28,20 +28,20 @@ jobs:
           java-version: '17'
           cache: gradle
 
-      - name: Setup Gradle 9.4.1
-        uses: gradle/actions/setup-gradle@v5
+      - name: Setup Gradle 8.13
+        uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '9.4.1'
+          gradle-version: '8.13'
           cache-read-only: false
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v4
+        uses: android-actions/setup-android@v4.0.1
         with:
-          packages: 'platform-tools platforms;android-37 build-tools;36.0.0'
-          accept-android-sdk-licenses: 'yes'
+          packages: 'platform-tools platforms;android-36 build-tools;35.0.0'
+          accept-android-sdk-licenses: 'true'
           log-accepted-android-sdk-licenses: 'false'
 
-      - name: Validate project structure
+      - name: Validate project
         shell: bash
         run: |
           set -euo pipefail
@@ -58,13 +58,13 @@ jobs:
           set -euo pipefail
           java -version
           gradle --version
-          test -d "${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          sdkmanager --list_installed | grep -E 'platform-tools|platforms;android-36|build-tools;35.0.0' || true
 
-      - name: Assemble native debug APK
+      - name: Build debug APK
         shell: bash
         run: |
           set -euo pipefail
-          gradle clean :android-app:assembleDebug \
+          gradle :android-app:assembleDebug \
             --stacktrace \
             --no-daemon \
             --warning-mode all \
