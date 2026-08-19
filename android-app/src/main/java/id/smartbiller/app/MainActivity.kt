@@ -150,10 +150,7 @@ class MainViewModel(
                 refresh()
             } catch (_: Exception) {
                 val normalized = email.trim().lowercase()
-                val valid = normalized in setOf(
-                    "admin", "supervisor", "biller",
-                    "admin@example.com", "supervisor@example.com", "biller@example.com",
-                )
+                val valid = normalized in setOf("admin", "supervisor", "biller", "admin@example.com", "supervisor@example.com", "biller@example.com")
                 if (valid && password == "change-me-now") {
                     val role = when (normalized) {
                         "supervisor", "supervisor@example.com" -> "SUPERVISOR"
@@ -220,29 +217,11 @@ class MainViewModel(
                 if (index == 1) "PAID" else "UNPAID",
                 customer.bill,
                 "2026-08-20T23:59:59.000Z",
-                Customer(
-                    customer.no,
-                    customer.no,
-                    customer.name,
-                    "3200${customer.no.takeLast(6)}",
-                    customer.address,
-                    ULP("ULP Sumedang"),
-                    customer.lat,
-                    customer.lng,
-                ),
+                Customer(customer.no, customer.no, customer.name, "3200${customer.no.takeLast(6)}", customer.address, ULP("ULP Sumedang"), customer.lat, customer.lng),
             )
         }
         customers = demoCustomers.map { customer ->
-            Customer(
-                customer.no,
-                customer.no,
-                customer.name,
-                "3200${customer.no.takeLast(6)}",
-                customer.address,
-                ULP("ULP Sumedang"),
-                customer.lat,
-                customer.lng,
-            )
+            Customer(customer.no, customer.no, customer.name, "3200${customer.no.takeLast(6)}", customer.address, ULP("ULP Sumedang"), customer.lat, customer.lng)
         }
         leaders = listOf(LeaderRow("biller@example.com", "Biller Demo", "ULP Sumedang", "Jawa Barat", demoCustomers.size))
         lastSync = "Mode Review • data demo"
@@ -255,18 +234,7 @@ class MainViewModel(
             } catch (_: Exception) {
                 customers = demoCustomers
                     .filter { query.isBlank() || listOf(it.no, it.name, it.address).any { value -> value.contains(query, true) } }
-                    .map { customer ->
-                        Customer(
-                            customer.no,
-                            customer.no,
-                            customer.name,
-                            "3200${customer.no.takeLast(6)}",
-                            customer.address,
-                            ULP("ULP Sumedang"),
-                            customer.lat,
-                            customer.lng,
-                        )
-                    }
+                    .map { customer -> Customer(customer.no, customer.no, customer.name, "3200${customer.no.takeLast(6)}", customer.address, ULP("ULP Sumedang"), customer.lat, customer.lng) }
             }
         }
     }
@@ -281,16 +249,7 @@ class MainViewModel(
                 val customer = demoCustomers.firstOrNull { it.no == customerNo }
                 if (customer != null) {
                     inquiry = InquiryResponse(
-                        Customer(
-                            customer.no,
-                            customer.no,
-                            customer.name,
-                            "320012345678",
-                            customer.address,
-                            ULP("ULP Sumedang"),
-                            customer.lat,
-                            customer.lng,
-                        ),
+                        Customer(customer.no, customer.no, customer.name, "320012345678", customer.address, ULP("ULP Sumedang"), customer.lat, customer.lng),
                         InquiryBilling("AGU 2026", customer.bill, customer.bill, 2500.0),
                         Inquiry("INQ-DEMO", "SUCCESS"),
                     )
@@ -338,33 +297,15 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun SmartBillerApp(vm: MainViewModel) {
     var splashVisible by rememberSaveable { mutableStateOf(true) }
-    LaunchedEffect(Unit) {
-        delay(1200)
-        splashVisible = false
-    }
-    if (splashVisible) {
-        SplashScreen()
-    } else if (vm.token == null) {
-        LoginScreen(vm)
-    } else {
-        DashboardShell(vm)
-    }
+    LaunchedEffect(Unit) { delay(1200); splashVisible = false }
+    if (splashVisible) SplashScreen() else if (vm.token == null) LoginScreen(vm) else DashboardShell(vm)
 }
 
 @Composable
 private fun SplashScreen() {
     AppBackground {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(110.dp)
-                    .background(Color.White.copy(alpha = 0.12f), MaterialTheme.shapes.extraLarge),
-                contentAlignment = Alignment.Center,
-            ) {
+        Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+            Box(Modifier.size(110.dp).background(Color.White.copy(alpha = 0.12f), MaterialTheme.shapes.extraLarge), contentAlignment = Alignment.Center) {
                 Icon(Icons.Default.Bolt, null, tint = Color(0xFFFFD54F), modifier = Modifier.size(58.dp))
             }
             Spacer(Modifier.height(18.dp))
@@ -382,45 +323,19 @@ private fun LoginScreen(vm: MainViewModel) {
     var password by rememberSaveable { mutableStateOf("change-me-now") }
     var visible by rememberSaveable { mutableStateOf(false) }
     AppBackground {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
+        Column(Modifier.fillMaxSize().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
             GlassCard(Modifier.fillMaxWidth()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Bolt, null, tint = Color(0xFFFFD54F), modifier = Modifier.size(48.dp))
                     Spacer(Modifier.width(12.dp))
-                    Column {
-                        Text("Smart Biller", color = Color.White, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-                        Text("PLN Electricity Services", color = Color.White.copy(alpha = 0.75f))
-                    }
+                    Column { Text("Smart Biller", color = Color.White, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold); Text("PLN Electricity Services", color = Color.White.copy(alpha = 0.75f)) }
                 }
-                Spacer(Modifier.height(18.dp))
-                Text("Selamat Datang 👋", color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Text("Masuk untuk melanjutkan", color = Color.White.copy(alpha = 0.7f))
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(18.dp)); Text("Selamat Datang 👋", color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold); Text("Masuk untuk melanjutkan", color = Color.White.copy(alpha = 0.7f)); Spacer(Modifier.height(16.dp))
                 OutlinedTextField(username, { username = it }, label = { Text("Username / Email") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                 Spacer(Modifier.height(10.dp))
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    label = { Text("Password") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
-                    trailingIcon = { TextButton(onClick = { visible = !visible }) { Text(if (visible) "Sembunyikan" else "Lihat") } },
-                )
-                vm.error?.let {
-                    Spacer(Modifier.height(8.dp))
-                    Text(it, color = Color(0xFFFFB4AB))
-                }
-                Spacer(Modifier.height(14.dp))
-                Button(onClick = { vm.login(username, password) }, enabled = !vm.loading, modifier = Modifier.fillMaxWidth()) {
-                    Text(if (vm.loading) "Memeriksa..." else "Masuk")
-                }
-                Spacer(Modifier.height(8.dp))
-                Text("Demo: admin / change-me-now", color = Color.White.copy(alpha = 0.62f), style = MaterialTheme.typography.bodySmall)
+                OutlinedTextField(password, { password = it }, label = { Text("Password") }, modifier = Modifier.fillMaxWidth(), singleLine = true, visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(), trailingIcon = { TextButton(onClick = { visible = !visible }) { Text(if (visible) "Sembunyikan" else "Lihat") } })
+                vm.error?.let { Spacer(Modifier.height(8.dp)); Text(it, color = Color(0xFFFFB4AB)) }
+                Spacer(Modifier.height(14.dp)); Button(onClick = { vm.login(username, password) }, enabled = !vm.loading, modifier = Modifier.fillMaxWidth()) { Text(if (vm.loading) "Memeriksa..." else "Masuk") }; Spacer(Modifier.height(8.dp)); Text("Demo: admin / change-me-now", color = Color.White.copy(alpha = 0.62f), style = MaterialTheme.typography.bodySmall)
             }
         }
     }
@@ -429,40 +344,13 @@ private fun LoginScreen(vm: MainViewModel) {
 @Composable
 private fun DashboardShell(vm: MainViewModel) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
-    val items = listOf(
-        AppTab.HOME to ("Beranda" to Icons.Default.Dashboard),
-        AppTab.CUSTOMERS to ("Pelanggan" to Icons.Default.People),
-        AppTab.BILLINGS to ("Tagihan" to Icons.Default.ReceiptLong),
-        AppTab.PAY to ("Bayar" to Icons.Default.Bolt),
-        AppTab.PROFILE to ("Profil" to Icons.Default.Person),
-    )
-
-    Scaffold(
-        containerColor = Color.Transparent,
-        bottomBar = {
-            NavigationBar {
-                items.forEachIndexed { index, item ->
-                    NavigationBarItem(
-                        selected = tab == index,
-                        onClick = { tab = index },
-                        icon = { Icon(item.second.second, item.second.first) },
-                        label = { Text(item.second.first) },
-                    )
-                }
-            }
-        },
-    ) { padding ->
+    val items = listOf(AppTab.HOME to ("Beranda" to Icons.Default.Dashboard), AppTab.CUSTOMERS to ("Pelanggan" to Icons.Default.People), AppTab.BILLINGS to ("Tagihan" to Icons.Default.ReceiptLong), AppTab.PAY to ("Bayar" to Icons.Default.Bolt), AppTab.PROFILE to ("Profil" to Icons.Default.Person))
+    Scaffold(containerColor = Color.Transparent, bottomBar = { NavigationBar { items.forEachIndexed { index, item -> NavigationBarItem(selected = tab == index, onClick = { tab = index }, icon = { Icon(item.second.second, item.second.first) }, label = { Text(item.second.first) }) } } }) { padding ->
         AppBackground {
             Column(Modifier.fillMaxSize().padding(padding)) {
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Smart Biller", color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                        Text("${vm.user?.name ?: "Petugas"} • ${vm.user?.role ?: "BILLER"}", color = Color.White.copy(alpha = 0.7f))
-                    }
-                    IconButton(onClick = vm::refresh) { Icon(Icons.Default.Refresh, "Refresh", tint = Color.White) }
+                Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) { Text("Smart Biller", color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold); Text("${vm.user?.name ?: "Petugas"} • ${vm.user?.role ?: "BILLER"}", color = Color.White.copy(alpha = 0.72f)) }
+                    IconButton(onClick = { vm.refresh() }) { Icon(Icons.Default.Refresh, "Refresh", tint = Color.White) }
                 }
                 when (items[tab].first) {
                     AppTab.HOME -> HomeScreen(vm)
@@ -478,74 +366,31 @@ private fun DashboardShell(vm: MainViewModel) {
 
 @Composable
 private fun HomeScreen(vm: MainViewModel) {
-    LazyColumn(
-        Modifier.fillMaxSize().padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(bottom = 24.dp),
-    ) {
-        item {
-            GlassCard(Modifier.fillMaxWidth()) {
-                Text("Halo, ${vm.user?.name ?: "Petugas"}", color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text("${vm.user?.role ?: "BILLER"} • ULP Sumedang", color = Color.White.copy(alpha = 0.72f))
-                Spacer(Modifier.height(8.dp))
-                Text("Periode ${vm.summary?.period ?: "2026-08"}", color = Color.White.copy(alpha = 0.65f))
-                Text(vm.summary?.category ?: "PREVENTIF", color = Color(0xFFFFD54F), fontWeight = FontWeight.Bold)
-                Text(vm.lastSync, color = Color.White.copy(alpha = 0.55f), style = MaterialTheme.typography.bodySmall)
-            }
-        }
-        item {
-            Row(Modifier.fillMaxWidth()) {
-                Metric("Pelanggan", vm.summary?.preventif ?: 0, Icons.Default.People, Modifier.weight(1f))
-                Spacer(Modifier.width(10.dp))
-                Metric("Sudah Bayar", vm.billings.count { it.status == "PAID" }, Icons.Default.CheckCircle, Modifier.weight(1f))
-            }
-        }
-        item {
-            Row(Modifier.fillMaxWidth()) {
-                Metric("Belum Bayar", vm.billings.count { it.status == "UNPAID" }, Icons.Default.ReceiptLong, Modifier.weight(1f))
-                Spacer(Modifier.width(10.dp))
-                Metric("Lewat Tempo", vm.billings.count { it.category == "LEWAT_TEMPO" }, Icons.Default.Warning, Modifier.weight(1f))
-            }
-        }
+    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
+        item { GlassCard(Modifier.fillMaxWidth()) { Text("Halo, ${vm.user?.name ?: "Petugas"}", color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold); Text("${vm.user?.role ?: "BILLER"} • ULP Sumedang", color = Color.White.copy(alpha = 0.72f)); Spacer(Modifier.height(8.dp)); Text("Periode ${vm.summary?.period ?: "2026-08"}", color = Color.White.copy(alpha = 0.7f)); Text(vm.summary?.category ?: "PREVENTIF", color = Color(0xFFFFD54F), fontWeight = FontWeight.Bold); Text(vm.lastSync, color = Color.White.copy(alpha = 0.58f), style = MaterialTheme.typography.bodySmall) } }
+        item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) { MetricCard("Pelanggan", (vm.summary?.preventif ?: 0).toString()); MetricCard("Bayar", vm.billings.count { it.status == "PAID" }.toString()); MetricCard("Belum", vm.billings.count { it.status != "PAID" }.toString()) } }
+        item { GlassCard(Modifier.fillMaxWidth()) { Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.Map, null, tint = Color(0xFFFFD54F), modifier = Modifier.size(32.dp)); Spacer(Modifier.width(10.dp)); Column { Text("Peta Pelanggan", color = Color.White, fontWeight = FontWeight.Bold); Text("Lokasi pelanggan tersedia melalui Google Maps", color = Color.White.copy(alpha = 0.65f), style = MaterialTheme.typography.bodySmall) } } } }
     }
 }
 
 @Composable
-private fun Metric(title: String, value: Int, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier = Modifier) {
-    GlassCard(modifier) {
-        Icon(icon, null, tint = Color.White)
-        Spacer(Modifier.height(8.dp))
-        Text(title, color = Color.White.copy(alpha = 0.7f), style = MaterialTheme.typography.bodySmall)
-        Text(value.toString(), color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-    }
+private fun MetricCard(title: String, value: String) {
+    GlassCard(Modifier.weight(1f)) { Text(title, color = Color.White.copy(alpha = 0.65f), style = MaterialTheme.typography.bodySmall); Spacer(Modifier.height(6.dp)); Text(value, color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold) }
 }
 
 @Composable
 private fun CustomerScreen(vm: MainViewModel) {
     var query by rememberSaveable { mutableStateOf("") }
     LaunchedEffect(query) { vm.search(query) }
-    LazyColumn(
-        Modifier.fillMaxSize().padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-        contentPadding = PaddingValues(bottom = 24.dp),
-    ) {
-        item {
-            OutlinedTextField(
-                value = query,
-                onValueChange = { query = it },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                label = { Text("Cari ID / nama / alamat") },
-                leadingIcon = { Icon(Icons.Default.Search, null) },
-            )
-        }
+    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
+        item { OutlinedTextField(value = query, onValueChange = { query = it }, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text("Cari ID / nama / alamat") }, leadingIcon = { Icon(Icons.Default.Search, null) }) }
         items(vm.customers) { customer ->
             GlassCard(Modifier.fillMaxWidth()) {
-                Text(customer.name, color = Color.White, fontWeight = FontWeight.Bold)
+                Text(customer.name ?: "Pelanggan", color = Color.White, fontWeight = FontWeight.Bold)
                 Text("ID ${customer.customerNo}", color = Color.White.copy(alpha = 0.7f))
-                Text(customer.address, color = Color.White.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall)
+                Text(customer.address ?: "Alamat belum tersedia", color = Color.White.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall)
                 Spacer(Modifier.height(6.dp))
-                TextButton(onClick = { openGoogleMaps(customer.latitude, customer.longitude) }) { Text("Buka lokasi") }
+                TextButton(onClick = { customer.latitude?.let { lat -> customer.longitude?.let { lng -> openGoogleMaps(lat, lng) } } }) { Text("Buka lokasi") }
             }
         }
     }
@@ -553,16 +398,12 @@ private fun CustomerScreen(vm: MainViewModel) {
 
 @Composable
 private fun BillingScreen(vm: MainViewModel) {
-    LazyColumn(
-        Modifier.fillMaxSize().padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-        contentPadding = PaddingValues(bottom = 24.dp),
-    ) {
+    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
         items(vm.billings) { billing ->
             GlassCard(Modifier.fillMaxWidth()) {
-                Text(billing.customer.name, color = Color.White, fontWeight = FontWeight.Bold)
+                Text(billing.customer.name ?: "Pelanggan", color = Color.White, fontWeight = FontWeight.Bold)
                 Text("${billing.period} • ${billing.category}", color = Color.White.copy(alpha = 0.7f))
-                Text(formatRupiah(billing.amount), color = Color(0xFFFFD54F), fontWeight = FontWeight.Bold)
+                Text(formatRupiah(billing.total), color = Color(0xFFFFD54F), fontWeight = FontWeight.Bold)
                 Text(billing.status, color = Color.White.copy(alpha = 0.65f))
             }
         }
@@ -572,27 +413,21 @@ private fun BillingScreen(vm: MainViewModel) {
 @Composable
 private fun InquiryScreen(vm: MainViewModel) {
     var customerNo by rememberSaveable { mutableStateOf(vm.customers.firstOrNull()?.customerNo ?: "535111194993") }
-    LazyColumn(
-        Modifier.fillMaxSize().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(bottom = 24.dp),
-    ) {
+    LazyColumn(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
         item {
             GlassCard(Modifier.fillMaxWidth()) {
                 Text("Inquiry Tagihan", color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(customerNo, { customerNo = it }, label = { Text("ID Pelanggan") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-                Spacer(Modifier.height(10.dp))
-                Button(onClick = { vm.checkInquiry(customerNo) }, modifier = Modifier.fillMaxWidth()) { Text("Inquiry") }
+                Spacer(Modifier.height(12.dp)); OutlinedTextField(customerNo, { customerNo = it }, label = { Text("ID Pelanggan") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                Spacer(Modifier.height(10.dp)); Button(onClick = { vm.checkInquiry(customerNo) }, modifier = Modifier.fillMaxWidth()) { Text("Inquiry") }
             }
         }
         vm.inquiry?.let { result ->
             item {
                 GlassCard(Modifier.fillMaxWidth()) {
-                    Text(result.customer.name, color = Color.White, fontWeight = FontWeight.Bold)
-                    Text("Periode ${result.billing.period}", color = Color.White.copy(alpha = 0.7f))
-                    Text(formatRupiah(result.billing.total), color = Color(0xFFFFD54F), fontWeight = FontWeight.Bold)
-                    Text("Reference ${result.inquiry.reference}", color = Color.White.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall)
+                    Text(result.customer.name ?: "Pelanggan", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("Periode ${result.billing.periode}", color = Color.White.copy(alpha = 0.7f))
+                    Text(formatRupiah(result.billing.amount), color = Color(0xFFFFD54F), fontWeight = FontWeight.Bold)
+                    Text("Reference ${result.inquiry.id}", color = Color.White.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
@@ -601,37 +436,23 @@ private fun InquiryScreen(vm: MainViewModel) {
 
 @Composable
 private fun ProfileScreen(vm: MainViewModel) {
-    LazyColumn(
-        Modifier.fillMaxSize().padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-        contentPadding = PaddingValues(bottom = 24.dp),
-    ) {
-        item {
-            GlassCard(Modifier.fillMaxWidth()) {
-                Text(vm.user?.name ?: "Biller Demo", color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text(vm.user?.email ?: "biller@example.com", color = Color.White.copy(alpha = 0.7f))
-                Text("Role: ${vm.user?.role ?: "BILLER"}", color = Color.White.copy(alpha = 0.65f))
-                Spacer(Modifier.height(10.dp))
-                Text("API: ${if (vm.apiOnline) "Online" else "Mode Review / Offline"}", color = Color.White.copy(alpha = 0.65f))
-                Text("Pengaturan & keamanan", color = Color.White, fontWeight = FontWeight.Bold)
-                Text("Tema, sinkronisasi dan keamanan", color = Color.White.copy(alpha = 0.65f), style = MaterialTheme.typography.bodySmall)
-            }
-        }
-        item { Button(onClick = vm::logout, modifier = Modifier.fillMaxWidth()) { Text("Keluar") } }
+    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
+        item { GlassCard(Modifier.fillMaxWidth()) { Text(vm.user?.name ?: "Biller", color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold); Text(vm.user?.email ?: "", color = Color.White.copy(alpha = 0.7f)); Text(vm.user?.role ?: "BILLER", color = Color(0xFFFFD54F), fontWeight = FontWeight.Bold) } }
+        item { GlassCard(Modifier.fillMaxWidth()) { Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.Settings, null, tint = Color(0xFFFFD54F)); Spacer(Modifier.width(10.dp)); Column { Text("Pengaturan", color = Color.White, fontWeight = FontWeight.Bold); Text("Tema, sinkronisasi dan keamanan", color = Color.White.copy(alpha = 0.65f), style = MaterialTheme.typography.bodySmall) } } } }
+        item { Button(onClick = { vm.logout() }, modifier = Modifier.fillMaxWidth()) { Text("Keluar") } }
     }
 }
 
-private fun formatRupiah(value: Double): String = NumberFormat.getCurrencyInstance(Locale("id", "ID")).apply {
-    maximumFractionDigits = 0
-    minimumFractionDigits = 0
-}.format(value)
+private fun formatRupiah(value: Double): String = NumberFormat.getCurrencyInstance(Locale("id", "ID")).apply { maximumFractionDigits = 0; minimumFractionDigits = 0 }.format(value)
 
 private fun openGoogleMaps(lat: Double, lng: Double) {
-    val uri = Uri.parse("geo:$lat,$lng?q=$lat,$lng")
-    val intent = Intent(Intent.ACTION_VIEW, uri)
-    AppContextHolderHolder(context = null)
+    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("geo:$lat,$lng?q=$lat,$lng"))
+    AppContext.context?.let { context ->
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(intent)
+    }
 }
 
-private fun AppContextHolderHolder(context: Any?) {
-    // Legacy no-op placeholder retained only for source compatibility.
+private object AppContext {
+    var context: android.content.Context? = null
 }
