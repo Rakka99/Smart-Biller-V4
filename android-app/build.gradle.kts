@@ -12,26 +12,23 @@ android {
         applicationId = "id.smartbiller.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 2
-        versionName = "2.0.6"
+        versionCode = 3
+        versionName = "3.0.0"
+        manifestPlaceholders["MAPS_API_KEY"] = providers.gradleProperty("MAPS_API_KEY").orNull
+            ?: System.getenv("MAPS_API_KEY")
+            ?: ""
     }
 
-    buildFeatures {
-        compose = true
-    }
+    buildFeatures { compose = true }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlin {
-        jvmToolchain(17)
-    }
+    kotlin { jvmToolchain(17) }
 
-    packaging {
-        resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
-    }
+    packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
 }
 
 dependencies {
@@ -53,4 +50,7 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+
+    // Google Maps SDK + Jetpack Compose integration.
+    implementation("com.google.maps.android:maps-compose:8.4.0")
 }
