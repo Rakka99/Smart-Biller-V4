@@ -12,6 +12,9 @@ concurrency:
   group: smart-biller-android-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.parallel=false
+
 jobs:
   build-native-apk:
     runs-on: ubuntu-latest
@@ -46,6 +49,7 @@ jobs:
         run: |
           set -euo pipefail
           sdkmanager "platform-tools" "platforms;android-36" "build-tools;35.0.0"
+          yes | sdkmanager --licenses >/dev/null || true
 
       - name: Validate source tree
         shell: bash
@@ -66,7 +70,27 @@ jobs:
           gradle --version
           test -n "${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
           test -d "${ANDROID_SDK_ROOT:-${ANDROID_HOME}}"
-          yes | sdkmanager --licenses >/dev/null || true
+          gradle :android-app:tasks --all --no-daemon --no-configuration-cache --console=plain >/tmp/smart-biller-gradle-tasks.txt
+
+      - name: Compile Kotlin sources
+        shell: bash
+        run: |
+          set -o pipefail
+          gradle :android-app:compileDebugKotlin \
+            --stacktrace \
+            --info \
+            --no-daemon \
+            --no-configuration-cache \
+            --console=plain 2>&1 | tee kotlin-compile.log
+
+      - name: Upload Kotlin diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smart-biller-kotlin-diagnostics-${{ github.run_number }}
+          path: kotlin-compile.log
+          if-no-files-found: ignore
+          retention-days: 14
 
       - name: Assemble debug APK
         shell: bash
@@ -85,7 +109,7 @@ jobs:
           name: smart-biller-gradle-diagnostics-${{ github.run_number }}
           path: gradle-build.log
           if-no-files-found: ignore
-          retention-days: 7
+          retention-days: 14
 
       - name: Verify APK
         shell: bash
