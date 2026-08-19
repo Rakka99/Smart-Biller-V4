@@ -16,6 +16,7 @@ jobs:
   build-native-apk:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,18 +35,19 @@ jobs:
           cache-read-only: false
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-37 build-tools;36.0.0'
 
-      - name: Install Android SDK packages
-        run: |
-          sdkmanager "platform-tools" "platforms;android-37" "build-tools;36.0.0"
-          yes | sdkmanager --licenses >/dev/null || true
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses >/dev/null || true
 
       - name: Validate project structure
         run: |
           test -f settings.gradle.kts
           test -f build.gradle.kts
           test -f android-app/build.gradle.kts
+          test -f gradle.properties
           test -f android-app/src/main/AndroidManifest.xml
           test -f android-app/src/main/java/id/smartbiller/app/MainActivity.kt
 
@@ -53,13 +55,13 @@ jobs:
         run: |
           java -version
           gradle --version
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
           sdkmanager --list_installed | grep -E 'platform-tools|platforms;android-37|build-tools;36.0.0'
 
       - name: Gradle configuration check
         run: |
-          gradle help --stacktrace --no-daemon --warning-mode all --no-configuration-cache
-          gradle :android-app:tasks --stacktrace --no-daemon --warning-mode all --no-configuration-cache >/tmp/smart-biller-tasks.txt
-          grep -E 'assembleDebug|compileDebugKotlin|compileDebugJavaWithJavac' /tmp/smart-biller-tasks.txt
+          gradle help --stacktrace --no-daemon --no-configuration-cache
+          gradle :android-app:tasks --stacktrace --no-daemon --no-configuration-cache | grep -E 'assembleDebug|compileDebugKotlin'
 
       - name: Clean build native debug APK
         run: |
