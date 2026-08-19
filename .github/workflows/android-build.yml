@@ -15,7 +15,7 @@ concurrency:
 jobs:
   build-native-apk:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
 
     steps:
       - name: Checkout
@@ -36,12 +36,15 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4.0.1
-        with:
-          packages: 'platform-tools platforms;android-36 build-tools;35.0.0'
-          accept-android-sdk-licenses: 'true'
-          log-accepted-android-sdk-licenses: 'false'
 
-      - name: Validate project
+      - name: Install required Android SDK packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;35.0.0"
+          yes | sdkmanager --licenses >/dev/null || true
+
+      - name: Validate project files
         shell: bash
         run: |
           set -euo pipefail
@@ -58,16 +61,25 @@ jobs:
           set -euo pipefail
           java -version
           gradle --version
-          sdkmanager --list_installed | grep -E 'platform-tools|platforms;android-36|build-tools;35.0.0' || true
+          sdkmanager --list_installed | grep -E 'platform-tools|platforms;android-36|build-tools;35.0.0'
 
-      - name: Build debug APK
+      - name: Compile Kotlin sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle :android-app:compileDebugKotlin \
+            --stacktrace \
+            --no-daemon \
+            --no-configuration-cache \
+            --console=plain
+
+      - name: Assemble debug APK
         shell: bash
         run: |
           set -euo pipefail
           gradle :android-app:assembleDebug \
             --stacktrace \
             --no-daemon \
-            --warning-mode all \
             --no-configuration-cache \
             --console=plain
 
