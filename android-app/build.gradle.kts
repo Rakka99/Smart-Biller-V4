@@ -13,7 +13,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 2
-        versionName = "2.0.4"
+        versionName = "2.0.5"
     }
 
     buildFeatures {
@@ -33,7 +33,9 @@ android {
 }
 
 dependencies {
-    val composeBom = platform("androidx.compose:compose-bom:2026.06.01")
+    // Keep Compose on the 1.9.x line so it remains compatible with
+    // AGP 8.13 / compileSdk 36. Compose 1.12+ requires AGP 9 and SDK 37.
+    val composeBom = platform("androidx.compose:compose-bom:2025.11.01")
     implementation(composeBom)
     androidTestImplementation(composeBom)
 
