@@ -18,7 +18,7 @@ env:
 jobs:
   build-native-apk:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
@@ -37,7 +37,7 @@ jobs:
           cache-read-only: false
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v4
+        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699
         with:
           packages: ''
           accept-android-sdk-licenses: 'true'
@@ -49,7 +49,7 @@ jobs:
           set -euo pipefail
           sdkmanager "platform-tools" "platforms;android-36" "build-tools;35.0.0"
 
-      - name: Validate project
+      - name: Verify project
         shell: bash
         run: |
           set -euo pipefail
@@ -64,17 +64,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          gradle --version
           gradle wrapper --gradle-version 8.13 --distribution-type bin
-          test -s gradlew
-          chmod +x gradlew
-          ./gradlew --version
+          test -x gradlew
 
-      - name: Build native debug APK
+      - name: Build debug APK
         shell: bash
         run: |
           set -o pipefail
-          ./gradlew clean :android-app:assembleDebug \
+          ./gradlew :android-app:clean :android-app:assembleDebug \
             --stacktrace \
             --no-daemon \
             --no-configuration-cache \
