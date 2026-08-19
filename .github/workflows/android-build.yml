@@ -37,13 +37,13 @@ jobs:
           cache-read-only: false
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699
+        uses: android-actions/setup-android@v4
         with:
           packages: ''
           accept-android-sdk-licenses: 'true'
           log-accepted-android-sdk-licenses: 'false'
 
-      - name: Install required Android SDK packages
+      - name: Install Android SDK packages
         shell: bash
         run: |
           set -euo pipefail
@@ -60,23 +60,21 @@ jobs:
           test -f android-app/src/main/AndroidManifest.xml
           test -f android-app/src/main/java/id/smartbiller/app/MainActivity.kt
 
-      - name: Verify toolchain
+      - name: Generate Gradle wrapper
         shell: bash
         run: |
           set -euo pipefail
-          java -version
           gradle --version
-          sdkmanager --list_installed | grep -E 'platform-tools|platforms;android-36|build-tools;35.0.0' || true
-
-      - name: Stop stale Gradle daemons
-        shell: bash
-        run: gradle --stop || true
+          gradle wrapper --gradle-version 8.13 --distribution-type bin
+          test -s gradlew
+          chmod +x gradlew
+          ./gradlew --version
 
       - name: Build native debug APK
         shell: bash
         run: |
           set -o pipefail
-          gradle :android-app:clean :android-app:assembleDebug \
+          ./gradlew clean :android-app:assembleDebug \
             --stacktrace \
             --no-daemon \
             --no-configuration-cache \
