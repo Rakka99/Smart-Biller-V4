@@ -35,13 +35,11 @@ jobs:
           cache-read-only: false
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v4
+        uses: android-actions/setup-android@v4.0.1
         with:
           packages: 'platform-tools platforms;android-37 build-tools;36.0.0'
-
-      - name: Accept Android SDK licenses
-        shell: bash
-        run: yes | sdkmanager --licenses >/dev/null || true
+          accept-android-sdk-licenses: 'yes'
+          log-accepted-android-sdk-licenses: 'false'
 
       - name: Validate project structure
         shell: bash
@@ -49,8 +47,8 @@ jobs:
           set -euo pipefail
           test -f settings.gradle.kts
           test -f build.gradle.kts
-          test -f android-app/build.gradle.kts
           test -f gradle.properties
+          test -f android-app/build.gradle.kts
           test -f android-app/src/main/AndroidManifest.xml
           test -f android-app/src/main/java/id/smartbiller/app/MainActivity.kt
 
@@ -60,24 +58,19 @@ jobs:
           set -euo pipefail
           java -version
           gradle --version
-          echo "ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT:-}"
-          sdkmanager --list_installed
-
-      - name: Verify Gradle configuration
-        shell: bash
-        run: |
-          set -euo pipefail
-          gradle help --stacktrace --no-daemon --no-configuration-cache
+          test -d "${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          sdkmanager --list_installed | grep -E 'platform-tools|platforms;android-37|build-tools;36.0.0' || true
 
       - name: Assemble native debug APK
         shell: bash
         run: |
           set -euo pipefail
-          gradle clean :android-app:assembleDebug \
+          gradle :android-app:assembleDebug \
             --stacktrace \
             --no-daemon \
             --warning-mode all \
-            --no-configuration-cache
+            --no-configuration-cache \
+            --console=plain
 
       - name: Verify APK
         shell: bash
