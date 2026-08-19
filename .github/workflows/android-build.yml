@@ -62,7 +62,7 @@ jobs:
           test -f android-app/src/main/AndroidManifest.xml
           test -f android-app/src/main/java/id/smartbiller/app/MainActivity.kt
 
-      - name: Validate toolchain
+      - name: Validate toolchain and Gradle configuration
         shell: bash
         run: |
           set -euo pipefail
@@ -70,7 +70,7 @@ jobs:
           gradle --version
           test -n "${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
           test -d "${ANDROID_SDK_ROOT:-${ANDROID_HOME}}"
-          gradle :android-app:tasks --all --no-daemon --no-configuration-cache --console=plain >/tmp/smart-biller-gradle-tasks.txt
+          gradle :android-app:help --no-daemon --no-configuration-cache --console=plain
 
       - name: Compile Kotlin sources
         shell: bash
@@ -82,6 +82,20 @@ jobs:
             --no-daemon \
             --no-configuration-cache \
             --console=plain 2>&1 | tee kotlin-compile.log
+
+      - name: Publish Kotlin compiler errors to job summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Kotlin compiler diagnostics"
+            echo
+            if [ -f kotlin-compile.log ]; then
+              grep -E '^e: |^w: |^error: |^warning: |^> Task :.* FAILED|^FAILURE: ' kotlin-compile.log | tail -n 120 || true
+            else
+              echo "kotlin-compile.log was not created."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload Kotlin diagnostics
         if: always()
