@@ -35,7 +35,7 @@ jobs:
           cache-read-only: false
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v4.0.1
+        uses: android-actions/setup-android@v4
         with:
           packages: 'platform-tools platforms;android-37 build-tools;36.0.0'
           accept-android-sdk-licenses: 'yes'
@@ -59,13 +59,12 @@ jobs:
           java -version
           gradle --version
           test -d "${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
-          sdkmanager --list_installed | grep -E 'platform-tools|platforms;android-37|build-tools;36.0.0' || true
 
       - name: Assemble native debug APK
         shell: bash
         run: |
           set -euo pipefail
-          gradle :android-app:assembleDebug \
+          gradle clean :android-app:assembleDebug \
             --stacktrace \
             --no-daemon \
             --warning-mode all \
