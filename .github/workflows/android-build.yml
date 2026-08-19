@@ -36,13 +36,10 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4.0.1
-
-      - name: Install required Android SDK packages
-        shell: bash
-        run: |
-          set -euo pipefail
-          sdkmanager "platform-tools" "platforms;android-36" "build-tools;35.0.0"
-          yes | sdkmanager --licenses >/dev/null || true
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;35.0.0'
+          accept-android-sdk-licenses: 'true'
+          log-accepted-android-sdk-licenses: 'false'
 
       - name: Validate project files
         shell: bash
@@ -61,26 +58,18 @@ jobs:
           set -euo pipefail
           java -version
           gradle --version
-          sdkmanager --list_installed | grep -E 'platform-tools|platforms;android-36|build-tools;35.0.0'
+          test -d "${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          sdkmanager --list_installed | head -n 80
 
-      - name: Compile Kotlin sources
+      - name: Clean and assemble debug APK
         shell: bash
         run: |
           set -euo pipefail
-          gradle :android-app:compileDebugKotlin \
+          gradle clean :android-app:assembleDebug \
             --stacktrace \
             --no-daemon \
             --no-configuration-cache \
-            --console=plain
-
-      - name: Assemble debug APK
-        shell: bash
-        run: |
-          set -euo pipefail
-          gradle :android-app:assembleDebug \
-            --stacktrace \
-            --no-daemon \
-            --no-configuration-cache \
+            --warning-mode all \
             --console=plain
 
       - name: Verify APK
