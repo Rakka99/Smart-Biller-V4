@@ -32,6 +32,7 @@ jobs:
         with:
           gradle-version: '8.13'
           cache-read-only: false
+          cache-overwrite-existing: true
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4.0.1
@@ -65,12 +66,7 @@ jobs:
           gradle --version
           test -n "${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
           test -d "${ANDROID_SDK_ROOT:-${ANDROID_HOME}}"
-
-      - name: Clean build caches
-        shell: bash
-        run: |
-          set -euo pipefail
-          gradle --stop || true
+          yes | sdkmanager --licenses >/dev/null || true
 
       - name: Assemble debug APK
         shell: bash
