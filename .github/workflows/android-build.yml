@@ -114,14 +114,8 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Stop after Kotlin failure
-        if: steps.kotlin_compile.outputs.status != '0'
-        shell: bash
-        run: |
-          echo "Kotlin compilation failed; APK packaging is intentionally skipped."
-          exit 1
-
       - name: Assemble debug APK
+        if: steps.kotlin_compile.outputs.status == '0'
         shell: bash
         run: |
           set -o pipefail
@@ -141,6 +135,7 @@ jobs:
           retention-days: 14
 
       - name: Verify APK
+        if: steps.kotlin_compile.outputs.status == '0'
         shell: bash
         run: |
           set -euo pipefail
@@ -150,6 +145,7 @@ jobs:
           ls -lh "$APK"
 
       - name: Upload APK
+        if: steps.kotlin_compile.outputs.status == '0'
         uses: actions/upload-artifact@v4
         with:
           name: smart-biller-native-debug-apk
