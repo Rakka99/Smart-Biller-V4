@@ -15,6 +15,7 @@ concurrency:
 jobs:
   build-native-apk:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,11 +25,13 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+          cache: gradle
 
       - name: Setup Gradle 9.4.1
         uses: gradle/actions/setup-gradle@v5
         with:
           gradle-version: '9.4.1'
+          cache-read-only: false
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -38,18 +41,28 @@ jobs:
           sdkmanager "platform-tools" "platforms;android-37" "build-tools;36.0.0"
           yes | sdkmanager --licenses >/dev/null || true
 
+      - name: Validate project structure
+        run: |
+          test -f settings.gradle.kts
+          test -f build.gradle.kts
+          test -f android-app/build.gradle.kts
+          test -f android-app/src/main/AndroidManifest.xml
+          test -f android-app/src/main/java/id/smartbiller/app/MainActivity.kt
+
       - name: Verify toolchain
         run: |
           java -version
           gradle --version
-          sdkmanager --list_installed | grep -E 'platform-tools|platforms;android-37|build-tools;36.0.0' || true
+          sdkmanager --list_installed | grep -E 'platform-tools|platforms;android-37|build-tools;36.0.0'
 
-      - name: Build native debug APK
-        run: gradle :android-app:assembleDebug --stacktrace --no-daemon --warning-mode all
+      - name: Clean and compile debug APK
+        run: |
+          gradle clean :android-app:assembleDebug --stacktrace --no-daemon --warning-mode all --no-configuration-cache
 
       - name: Verify APK
         run: |
           test -s android-app/build/outputs/apk/debug/android-app-debug.apk
+          sha256sum android-app/build/outputs/apk/debug/android-app-debug.apk
           ls -lh android-app/build/outputs/apk/debug/android-app-debug.apk
 
       - name: Upload APK
