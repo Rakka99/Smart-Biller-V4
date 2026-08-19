@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import axios from "axios";
 import "./styles.css";
 
-const API = import.meta.env.VITE_API_URL ?? "http://localhost:4000/api";
+const API = "https://vgnynrzhanfnbifjedga.supabase.co/functions/v1/smart-biller-api";
 const api = axios.create({ baseURL: API });
 
 type Billing = { id:string; period:string; category:string; status:string; total:number; dueDate:string; customer:any };
