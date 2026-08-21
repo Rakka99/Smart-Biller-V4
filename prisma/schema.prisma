@@ -31,6 +31,7 @@ model User {
   payments Payment[]
   pdilRecords PDILRecord[] @relation("PdilActor")
   assignments CustomerAssignment[]
+  rbms RBM[]
 }
 
 model Region {
@@ -53,8 +54,26 @@ model ULP {
   active Boolean @default(true)
   users User[]
   customers Customer[]
+  rbms RBM[]
   createdAt DateTime @default(now())
   @@index([regionId])
+}
+
+model RBM {
+  id String @id @default(cuid())
+  code String
+  name String
+  sequence Int
+  billerId String
+  ulpId String
+  active Boolean @default(true)
+  biller User @relation(fields: [billerId], references: [id])
+  ulp ULP @relation(fields: [ulpId], references: [id])
+  customers Customer[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([billerId, code])
+  @@index([ulpId, code])
 }
 
 model Customer {
@@ -66,6 +85,8 @@ model Customer {
   segmentPower String?
   tariff String?
   rbm String?
+  rbmId String?
+  billerId String?
   langkah Int?
   gardu String?
   tiang String?
@@ -81,6 +102,8 @@ model Customer {
   ulpId String?
   region Region? @relation(fields: [regionId], references: [id])
   ulp ULP? @relation(fields: [ulpId], references: [id])
+  rbmAssignment RBM? @relation(fields: [rbmId], references: [id])
+  biller User? @relation(fields: [billerId], references: [id])
   active Boolean @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -92,6 +115,7 @@ model Customer {
   @@index([name])
   @@index([meterNo])
   @@index([regionId, ulpId])
+  @@index([billerId, rbmId])
 }
 
 model CustomerAssignment {
@@ -150,6 +174,7 @@ model Payment {
   id String @id @default(cuid())
   refId String @unique
   invoiceNo String? @unique
+  iakTrId Int? @unique
   customerId String
   inquiryId String
   userId String
