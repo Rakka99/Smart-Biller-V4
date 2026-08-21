@@ -1,6 +1,6 @@
 # Smart Biller V4
 
-Aplikasi monitoring operasional PLN Pascabayar, pembayaran Digiflazz, PDIL, mapping lokasi, invoice, pencarian pelanggan, dan leaderboard.
+Aplikasi monitoring operasional PLN Pascabayar, pembayaran IAK, PDIL, mapping lokasi, invoice, pencarian pelanggan, dan leaderboard.
 
 ## Business rules billing
 
@@ -23,6 +23,21 @@ Aplikasi monitoring operasional PLN Pascabayar, pembayaran Digiflazz, PDIL, mapp
 - `data` — manifest/import configuration. Customer master production/demo data is intentionally excluded from this public repository.
 - `.github/workflows` — GitHub Actions Android build.
 
+## IAK integration
+
+Smart Biller menggunakan **IAK sebagai satu-satunya provider PLN Pascabayar**.
+
+Flow transaksi:
+
+1. Biller mengirim IDPEL ke `/api/pln/inquiry`.
+2. Backend membuat `ref_id` unik dan melakukan inquiry `PLNPOSTPAID` ke IAK.
+3. `tr_id` dari hasil inquiry disimpan di response inquiry dan digunakan untuk payment.
+4. Backend memanggil `pay-pasca` menggunakan `tr_id`.
+5. Jika hasil payment pending/response tidak diterima, backend menggunakan `checkstatus` berdasarkan `ref_id` sebelum menentukan hasil akhir.
+6. Setelah sukses, billing ditandai PAID dan invoice dibuat.
+
+IAK API key dan username hanya boleh berada di backend environment; jangan pernah memasukkannya ke APK, frontend, atau repository.
+
 ## Local setup
 
 ```bash
@@ -36,17 +51,18 @@ npx cap sync android
 
 ## Environment
 
-Copy `.env.example` to `.env` and configure PostgreSQL, JWT, CORS, and Digiflazz credentials. Never commit real API keys or production credentials.
+Copy `.env.example` to `.env` dan konfigurasi PostgreSQL, JWT, CORS, serta credential IAK. Jangan commit API key atau credential production.
 
-For testing, set `DIGIFLAZZ_TESTING=true`.
+Untuk development IAK, gunakan endpoint sandbox yang tercantum pada dokumentasi IAK dan `IAK_PLN_PRODUCT_CODE=PLNPOSTPAID`.
 
 ## Production notes
 
-1. Backend must run over HTTPS.
-2. Never put Digiflazz API credentials in the APK/frontend.
-3. Set `CORS_ORIGIN` to the frontend domain.
-4. Configure Digiflazz webhook to `/api/webhooks/digiflazz`.
-5. Late-payment penalty must come from the official billing source/API; the app does not invent the nominal amount.
+1. Backend harus berjalan melalui HTTPS.
+2. Jangan pernah menaruh IAK API credentials di APK/frontend.
+3. Set `CORS_ORIGIN` ke domain frontend.
+4. Pastikan IP server production sudah diizinkan pada pengaturan API IAK jika diperlukan.
+5. Untuk transaksi `PENDING`, lakukan `checkstatus` sebelum retry payment agar tidak terjadi pembayaran ganda.
+6. Denda keterlambatan harus berasal dari sumber billing/API resmi; aplikasi tidak mengarang nominal denda.
 
 ## Android build
 
