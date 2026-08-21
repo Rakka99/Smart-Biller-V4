@@ -32,6 +32,7 @@ model User {
   pdilRecords PDILRecord[] @relation("PdilActor")
   assignments CustomerAssignment[]
   rbms RBM[]
+  customersAsBiller Customer[] @relation("BillerCustomers")
 }
 
 model Region {
@@ -103,7 +104,7 @@ model Customer {
   region Region? @relation(fields: [regionId], references: [id])
   ulp ULP? @relation(fields: [ulpId], references: [id])
   rbmAssignment RBM? @relation(fields: [rbmId], references: [id])
-  biller User? @relation(fields: [billerId], references: [id])
+  biller User? @relation("BillerCustomers", fields: [billerId], references: [id])
   active Boolean @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
