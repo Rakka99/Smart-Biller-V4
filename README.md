@@ -15,11 +15,25 @@ Aplikasi monitoring operasional PLN Pascabayar, pembayaran IAK, PDIL, mapping lo
 - **SUPERVISOR**: monitoring wilayah/ULP, PDIL, leaderboard, pencarian.
 - **BILLER**: pencarian, inquiry, pembayaran, invoice, transaksi.
 
+## Biller and RBM structure
+
+Setiap Biller memiliki tepat lima kode rute RBM:
+
+- RBM A
+- RBM B
+- RBM C
+- RBM D
+- RBM E
+
+Database mengikat setiap RBM ke **Biller + ULP**, kemudian setiap pelanggan dapat diikat ke `billerId` dan `rbmId`. Endpoint `/api/rbms` hanya mengembalikan RBM milik Biller ketika login sebagai BILLER, RBM pada ULP ketika login sebagai SUPERVISOR, dan seluruh RBM untuk ADMIN.
+
+Inquiry dan pembayaran Biller juga memeriksa kepemilikan pelanggan berdasarkan Biller/RBM sebelum transaksi diteruskan ke IAK.
+
 ## Project structure
 
 - `apps/api` — backend Node.js/Express + Prisma/PostgreSQL.
 - `apps/web` — frontend Vite/React + Capacitor Android.
-- `prisma` — database schema.
+- `prisma` — database schema and migrations.
 - `data` — manifest/import configuration. Customer master production/demo data is intentionally excluded from this public repository.
 - `.github/workflows` — GitHub Actions Android build.
 
@@ -31,7 +45,7 @@ Flow transaksi:
 
 1. Biller mengirim IDPEL ke `/api/pln/inquiry`.
 2. Backend membuat `ref_id` unik dan melakukan inquiry `PLNPOSTPAID` ke IAK.
-3. `tr_id` dari hasil inquiry disimpan di response inquiry dan digunakan untuk payment.
+3. `tr_id` dari hasil inquiry disimpan pada transaksi dan digunakan untuk payment.
 4. Backend memanggil `pay-pasca` menggunakan `tr_id`.
 5. Jika hasil payment pending/response tidak diterima, backend menggunakan `checkstatus` berdasarkan `ref_id` sebelum menentukan hasil akhir.
 6. Setelah sukses, billing ditandai PAID dan invoice dibuat.
