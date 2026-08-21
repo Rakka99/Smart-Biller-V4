@@ -14,27 +14,44 @@ router.post("/inquiry", async (req, res, next) => {
       customerNo: z.string().regex(/^\d{6,20}$/)
     }).parse(req.body);
 
+    const user = req.user!;
+    const existingCustomer = await prisma.customer.findUnique({
+      where: { customerNo },
+      include: { rbmAssignment: true }
+    });
+
+    if (user.role === "BILLER") {
+      if (!existingCustomer || existingCustomer.billerId !== user.id || !existingCustomer.rbmId) {
+        return res.status(403).json({ error: "Pelanggan tidak berada pada RBM Biller ini" });
+      }
+    } else if (user.role === "SUPERVISOR" && existingCustomer && existingCustomer.ulpId && user.ulpId && existingCustomer.ulpId !== user.ulpId) {
+      return res.status(403).json({ error: "Pelanggan berada di luar wilayah ULP Supervisor" });
+    }
+
     const refId = makeRefId("INQ");
     const response = await inquiryPln(customerNo, refId);
     const data = getIakData(response);
     const success = String(data?.response_code ?? data?.rc ?? "") === "00";
 
-    const customer = await prisma.customer.upsert({
-      where: { customerNo },
-      update: {
-        meterNo: data?.hp ?? undefined,
-        name: data?.tr_name ?? undefined,
-        subscriberId: data?.hp ?? undefined,
-        segmentPower: data?.desc?.daya != null ? String(data.desc.daya) : undefined
-      },
-      create: {
-        customerNo,
-        meterNo: data?.hp ?? null,
-        name: data?.tr_name ?? null,
-        subscriberId: data?.hp ?? null,
-        segmentPower: data?.desc?.daya != null ? String(data.desc.daya) : null
-      }
-    });
+    const customer = existingCustomer
+      ? await prisma.customer.update({
+          where: { id: existingCustomer.id },
+          data: {
+            meterNo: data?.hp ?? undefined,
+            name: data?.tr_name ?? undefined,
+            subscriberId: data?.hp ?? undefined,
+            segmentPower: data?.desc?.daya != null ? String(data.desc.daya) : undefined
+          }
+        })
+      : await prisma.customer.create({
+          data: {
+            customerNo,
+            meterNo: data?.hp ?? null,
+            name: data?.tr_name ?? null,
+            subscriberId: data?.hp ?? null,
+            segmentPower: data?.desc?.daya != null ? String(data.desc.daya) : null
+          }
+        });
 
     const inquiry = await prisma.inquiry.create({
       data: {
@@ -94,7 +111,9 @@ router.post("/inquiry", async (req, res, next) => {
       customer,
       billing,
       provider: "IAK",
-      transactionId: data?.tr_id ?? null
+      transactionId: data?.tr_id ?? null,
+      rbm: customer.rbm,
+      billerId: customer.billerId
     });
   } catch (e) {
     next(e);
