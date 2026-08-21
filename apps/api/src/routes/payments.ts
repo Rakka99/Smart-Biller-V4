@@ -17,6 +17,43 @@ function mapIakStatus(data: any): "SUCCESS" | "FAILED" | "PENDING" | "UNKNOWN" {
   return "UNKNOWN";
 }
 
+async function assertPaymentScope(user: Express.Request["user"], customer: { billerId: string | null; ulpId: string | null }) {
+  if (!user) throw new Error("Unauthorized");
+  if (user.role === "BILLER" && customer.billerId !== user.id) throw new Error("Pelanggan bukan milik Biller ini");
+  if (user.role === "SUPERVISOR" && customer.ulpId && user.ulpId && customer.ulpId !== user.ulpId) throw new Error("Pelanggan di luar ULP Supervisor");
+}
+
+async function finalizeSuccess(paymentId: string) {
+  const payment = await prisma.payment.findUnique({ where: { id: paymentId } });
+  if (!payment || payment.status !== "SUCCESS") return;
+
+  const invoiceNo = `INV-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${payment.refId.replace(/[^A-Za-z0-9]/g, "").slice(-10).toUpperCase()}`;
+  await prisma.invoice.upsert({
+    where: { paymentId: payment.id },
+    update: { total: payment.sellingPrice ?? 0 },
+    create: { invoiceNo, paymentId: payment.id, customerId: payment.customerId, total: payment.sellingPrice ?? 0 }
+  });
+
+  if (payment.period) {
+    await prisma.billing.upsert({
+      where: { customerId_period: { customerId: payment.customerId, period: payment.period } },
+      update: { status: "PAID", paidAt: payment.paidAt ?? new Date(), amount: payment.amount ?? 0, total: payment.sellingPrice ?? 0 },
+      create: {
+        customerId: payment.customerId,
+        period: payment.period,
+        dueDate: dueDateFor(payment.period),
+        amount: payment.amount ?? 0,
+        penalty: 0,
+        total: payment.sellingPrice ?? 0,
+        status: "PAID",
+        category: classifyBilling(payment.period, new Date()),
+        paidAt: payment.paidAt ?? new Date(),
+        sourceRefId: payment.refId
+      }
+    });
+  }
+}
+
 router.post("/", async (req, res, next) => {
   try {
     const { inquiryId } = z.object({ inquiryId: z.string().min(1) }).parse(req.body);
@@ -25,8 +62,14 @@ router.post("/", async (req, res, next) => {
     if (!inquiry) return res.status(404).json({ error: "Inquiry tidak ditemukan" });
     if (inquiry.status !== "SUCCESS") return res.status(400).json({ error: "Inquiry tidak valid" });
 
+    try {
+      await assertPaymentScope(req.user, inquiry.customer);
+    } catch (scopeError) {
+      return res.status(403).json({ error: (scopeError as Error).message });
+    }
+
     const existing = await prisma.payment.findUnique({ where: { refId: inquiry.refId } });
-    if (existing) return res.json({ payment: existing, reused: true });
+    if (existing) return res.json({ payment: existing, reused: true, provider: "IAK", iakTrId: existing.iakTrId });
 
     const rawInquiry: any = inquiry.rawResponse ?? {};
     const trId = Number(rawInquiry?.data?.tr_id ?? rawInquiry?.tr_id);
@@ -37,6 +80,7 @@ router.post("/", async (req, res, next) => {
     const payment = await prisma.payment.create({
       data: {
         refId: inquiry.refId,
+        iakTrId: trId,
         inquiryId: inquiry.id,
         customerId: inquiry.customerId,
         userId: req.user!.id,
@@ -78,33 +122,7 @@ router.post("/", async (req, res, next) => {
       }
     });
 
-    if (status === "SUCCESS") {
-      const invoiceNo = `INV-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${updated.refId.replace(/[^A-Za-z0-9]/g, "").slice(-10).toUpperCase()}`;
-      await prisma.invoice.upsert({
-        where: { paymentId: updated.id },
-        update: { total: updated.sellingPrice ?? 0 },
-        create: { invoiceNo, paymentId: updated.id, customerId: updated.customerId, total: updated.sellingPrice ?? 0 }
-      });
-
-      if (updated.period) {
-        await prisma.billing.upsert({
-          where: { customerId_period: { customerId: updated.customerId, period: updated.period } },
-          update: { status: "PAID", paidAt: new Date(), amount: updated.amount ?? 0, total: updated.sellingPrice ?? 0 },
-          create: {
-            customerId: updated.customerId,
-            period: updated.period,
-            dueDate: dueDateFor(updated.period),
-            amount: updated.amount ?? 0,
-            penalty: 0,
-            total: updated.sellingPrice ?? 0,
-            status: "PAID",
-            category: classifyBilling(updated.period, new Date()),
-            paidAt: new Date(),
-            sourceRefId: updated.refId
-          }
-        });
-      }
-    }
+    if (status === "SUCCESS") await finalizeSuccess(updated.id);
 
     await prisma.auditLog.create({
       data: {
@@ -127,6 +145,12 @@ router.post("/:refId/check-status", async (req, res, next) => {
     const payment = await prisma.payment.findUnique({ where: { refId: req.params.refId }, include: { customer: true } });
     if (!payment) return res.status(404).json({ error: "Transaksi tidak ditemukan" });
 
+    try {
+      await assertPaymentScope(req.user, payment.customer);
+    } catch (scopeError) {
+      return res.status(403).json({ error: (scopeError as Error).message });
+    }
+
     const ageMs = Date.now() - payment.lastStatusAt.getTime();
     if (ageMs < 60_000) return res.status(429).json({ error: "Tunggu minimal 1 menit sebelum cek status lagi" });
 
@@ -148,7 +172,9 @@ router.post("/:refId/check-status", async (req, res, next) => {
       }
     });
 
-    return res.json({ payment: updated, provider: "IAK" });
+    if (status === "SUCCESS") await finalizeSuccess(updated.id);
+
+    return res.json({ payment: updated, provider: "IAK", iakTrId: updated.iakTrId });
   } catch (e) {
     next(e);
   }
