@@ -2,8 +2,103 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma";
 import { makeRefId } from "../lib/crypto";
-import { inquiryPln, inquiryPasca } from "../services/digiflazz";
+import { inquiryPln, getIakData } from "../services/iak";
 import { auth } from "../middleware/auth";
-const router=Router(); router.use(auth);
-router.post("/inquiry",async(req,res,next)=>{try{const {customerNo}=z.object({customerNo:z.string().regex(/^\d{6,20}$/)}).parse(req.body);const refId=makeRefId("INQ");const response=await inquiryPln(customerNo,refId);const data=response?.data??response;const success=data?.status==="Sukses"||data?.rc==="00";const customer=await prisma.customer.upsert({where:{customerNo},update:{meterNo:data?.meter_no??undefined,name:data?.name??undefined,subscriberId:data?.subscriber_id??undefined,segmentPower:data?.segment_power??undefined},create:{customerNo,meterNo:data?.meter_no??null,name:data?.name??null,subscriberId:data?.subscriber_id??null,segmentPower:data?.segment_power??null}});const inquiry=await prisma.inquiry.create({data:{refId,customerId:customer.id,status:success?"SUCCESS":"FAILED",message:data?.message,rc:data?.rc,rawResponse:response}});let billing:any=null;if(success){try{billing=(await inquiryPasca(customerNo,refId))?.data??null;if(billing){await prisma.inquiry.update({where:{id:inquiry.id},data:{period:billing.periode,adminFee:Number.isFinite(Number(billing.admin))?Number(billing.admin):null,amount:Number.isFinite(Number(billing.price))?Number(billing.price):null,total:Number.isFinite(Number(billing.selling_price))?Number(billing.selling_price):null,rawResponse:{validation:response,billing}}});if(billing.periode){const {classifyBilling,dueDateFor}=await import("../services/billing-classifier");await prisma.billing.upsert({where:{customerId_period:{customerId:customer.id,period:billing.periode}},update:{amount:Number(billing.price)||0,penalty:Number(billing.penalty??billing.denda)||0,total:Number(billing.selling_price)||Number(billing.price)||0,category:classifyBilling(billing.periode),dueDate:dueDateFor(billing.periode),sourceRefId:refId,rawData:billing},create:{customerId:customer.id,period:billing.periode,amount:Number(billing.price)||0,penalty:Number(billing.penalty??billing.denda)||0,total:Number(billing.selling_price)||Number(billing.price)||0,category:classifyBilling(billing.periode),dueDate:dueDateFor(billing.periode),sourceRefId:refId,rawData:billing}});}}}catch(error){console.warn("Billing inquiry failed after customer validation",error);}}const fresh=await prisma.inquiry.findUnique({where:{id:inquiry.id}});return res.json({inquiry:fresh,customer,billing});}catch(e){next(e)}});
+
+const router = Router();
+router.use(auth);
+
+router.post("/inquiry", async (req, res, next) => {
+  try {
+    const { customerNo } = z.object({
+      customerNo: z.string().regex(/^\d{6,20}$/)
+    }).parse(req.body);
+
+    const refId = makeRefId("INQ");
+    const response = await inquiryPln(customerNo, refId);
+    const data = getIakData(response);
+    const success = String(data?.response_code ?? data?.rc ?? "") === "00";
+
+    const customer = await prisma.customer.upsert({
+      where: { customerNo },
+      update: {
+        meterNo: data?.hp ?? undefined,
+        name: data?.tr_name ?? undefined,
+        subscriberId: data?.hp ?? undefined,
+        segmentPower: data?.desc?.daya != null ? String(data.desc.daya) : undefined
+      },
+      create: {
+        customerNo,
+        meterNo: data?.hp ?? null,
+        name: data?.tr_name ?? null,
+        subscriberId: data?.hp ?? null,
+        segmentPower: data?.desc?.daya != null ? String(data.desc.daya) : null
+      }
+    });
+
+    const inquiry = await prisma.inquiry.create({
+      data: {
+        refId,
+        customerId: customer.id,
+        status: success ? "SUCCESS" : "FAILED",
+        message: data?.message,
+        rc: data?.response_code,
+        rawResponse: response,
+        period: data?.period ?? null,
+        adminFee: Number.isFinite(Number(data?.admin)) ? Number(data.admin) : null,
+        amount: Number.isFinite(Number(data?.nominal)) ? Number(data.nominal) : null,
+        total: Number.isFinite(Number(data?.price)) ? Number(data.price) : null
+      }
+    });
+
+    let billing: any = null;
+    if (success) {
+      const period = data?.period ?? data?.desc?.tagihan?.detail?.[0]?.periode;
+      const amount = Number(data?.nominal ?? data?.desc?.tagihan?.detail?.[0]?.nilai_tagihan);
+      const admin = Number(data?.admin ?? data?.desc?.tagihan?.detail?.[0]?.admin ?? 0);
+      const penalty = Number(data?.desc?.tagihan?.detail?.[0]?.denda ?? 0);
+      const total = Number(data?.price ?? data?.desc?.tagihan?.detail?.[0]?.total ?? amount + admin + penalty);
+
+      billing = data;
+
+      if (period) {
+        const { classifyBilling, dueDateFor } = await import("../services/billing-classifier");
+        await prisma.billing.upsert({
+          where: { customerId_period: { customerId: customer.id, period } },
+          update: {
+            amount: Number.isFinite(amount) ? amount : 0,
+            penalty: Number.isFinite(penalty) ? penalty : 0,
+            total: Number.isFinite(total) ? total : 0,
+            category: classifyBilling(period),
+            dueDate: dueDateFor(period),
+            sourceRefId: refId,
+            rawData: data
+          },
+          create: {
+            customerId: customer.id,
+            period,
+            amount: Number.isFinite(amount) ? amount : 0,
+            penalty: Number.isFinite(penalty) ? penalty : 0,
+            total: Number.isFinite(total) ? total : 0,
+            category: classifyBilling(period),
+            dueDate: dueDateFor(period),
+            sourceRefId: refId,
+            rawData: data
+          }
+        });
+      }
+    }
+
+    return res.json({
+      inquiry,
+      customer,
+      billing,
+      provider: "IAK",
+      transactionId: data?.tr_id ?? null
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
 export default router;
