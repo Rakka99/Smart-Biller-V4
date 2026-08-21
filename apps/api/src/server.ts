@@ -13,6 +13,7 @@ import customerRoutes from "./routes/customers";
 import leaderboardRoutes from "./routes/leaderboard";
 import invoiceRoutes from "./routes/invoices";
 import userRoutes from "./routes/users";
+import rbmRoutes from "./routes/rbms";
 import { errorHandler, notFound } from "./middleware/errors";
 
 const app = express();
@@ -40,6 +41,7 @@ app.use("/api/customers", customerRoutes);
 app.use("/api/leaderboard", leaderboardRoutes);
 app.use("/api/invoices", invoiceRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/rbms", rbmRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
