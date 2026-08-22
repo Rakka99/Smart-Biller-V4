@@ -2,9 +2,7 @@ package id.smartbiller.app.data
 
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.providers.builtin.Email
-import io.github.jan.supabase.auth.user.UserInfo
 import io.github.jan.supabase.postgrest.from
-import io.github.jan.supabase.postgrest.query.filter.FilterOperator
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -28,24 +26,24 @@ class SupabaseAuthRepository(
     private val client: SupabaseClient = SupabaseClientProvider.client,
 ) {
     suspend fun login(email: String, password: String): Result<SupabaseLoginResult> = runCatching {
-        client.auth.signInWith(Email) {
+        val auth = client.auth
+        auth.signInWith(Email) {
             this.email = email
             this.password = password
         }
 
-        val session = client.auth.currentSessionOrNull()
+        val session = auth.currentSessionOrNull()
             ?: error("Supabase session tidak tersedia")
 
         val userId = session.user?.id ?: error("User ID tidak tersedia")
-
         val profile = client
             .from("profiles")
-            .select {
-                filter {
-                    eq("id", userId)
-                }
-            }
+            .select()
             .decodeSingle<SupabaseProfile>()
+
+        if (profile.id != userId) {
+            error("Profil Supabase tidak sesuai dengan pengguna yang login")
+        }
 
         SupabaseLoginResult(
             accessToken = session.accessToken,
@@ -57,14 +55,15 @@ class SupabaseAuthRepository(
         val userId = client.auth.currentSessionOrNull()?.user?.id
             ?: error("Belum login")
 
-        client
+        val profile = client
             .from("profiles")
-            .select {
-                filter {
-                    eq("id", userId)
-                }
-            }
+            .select()
             .decodeSingle<SupabaseProfile>()
+
+        if (profile.id != userId) {
+            error("Profil Supabase tidak sesuai dengan pengguna yang login")
+        }
+        profile
     }
 
     suspend fun logout() {
