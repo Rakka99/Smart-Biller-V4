@@ -22,12 +22,5 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <activity
-            android:name="id.smartbiller.app.V4Activity"
-            android:exported="false" />
-        <activity
-            android:name="id.smartbiller.app.MainActivity"
-            android:exported="false" />
     </application>
 </manifest>
