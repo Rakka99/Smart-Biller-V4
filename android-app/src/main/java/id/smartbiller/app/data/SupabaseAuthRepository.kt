@@ -2,6 +2,8 @@ package id.smartbiller.app.data
 
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.providers.builtin.Email
+import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.query.filter.FilterOperator
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -33,11 +35,13 @@ class SupabaseAuthRepository(
         val session = client.auth.currentSessionOrNull()
             ?: error("Supabase session tidak tersedia")
 
+        val userId = session.user?.id ?: error("User ID tidak tersedia")
+
         val profile = client
             .from("profiles")
             .select {
                 filter {
-                    eq("id", session.user?.id ?: error("User ID tidak tersedia"))
+                    eq("id", userId)
                 }
             }
             .decodeSingle<SupabaseProfile>()
@@ -55,7 +59,9 @@ class SupabaseAuthRepository(
         client
             .from("profiles")
             .select {
-                filter { eq("id", userId) }
+                filter {
+                    eq("id", userId)
+                }
             }
             .decodeSingle<SupabaseProfile>()
     }
