@@ -1,4 +1,4 @@
-name: Smart Biller Android APK
+name: BMAX Android APK
 
 on:
   workflow_dispatch:
@@ -9,13 +9,14 @@ permissions:
   contents: read
 
 concurrency:
-  group: smart-biller-android-${{ github.ref }}
+  group: bmax-android-${{ github.ref }}
   cancel-in-progress: true
 
 env:
   GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.parallel=false
   JAVA_TOOL_OPTIONS: -Dfile.encoding=UTF-8
   MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
+  SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
 
 jobs:
   build-native-apk:
@@ -55,7 +56,7 @@ jobs:
           sdkmanager "platform-tools" "platforms;android-36" "build-tools;35.0.0"
           yes | sdkmanager --licenses >/dev/null || true
 
-      - name: Validate source tree and Maps configuration
+      - name: Validate source tree
         shell: bash
         run: |
           set -euo pipefail
@@ -64,14 +65,21 @@ jobs:
           test -f gradle.properties
           test -f android-app/build.gradle.kts
           test -f android-app/src/main/AndroidManifest.xml
-          test -f android-app/src/main/java/id/smartbiller/app/V4Activity.kt
-          test -f android-app/src/main/java/id/smartbiller/app/MainActivity.kt
-          test -f android-app/src/main/java/id/smartbiller/app/ui/theme/Theme.kt
+          test -f android-app/src/main/java/id/bmax/app/BmaxActivity.kt
+          test -f android-app/src/main/java/id/bmax/app/domain/BmaxDomain.kt
+          test -f android-app/src/main/java/id/smartbiller/app/data/SupabaseAuthRepository.kt
+          test -f android-app/src/main/java/id/smartbiller/app/data/SupabaseClientProvider.kt
           test -f android-app/src/main/res/drawable/ic_launcher.xml
+          test -s android-app/build.gradle.kts
           if [ -z "${MAPS_API_KEY:-}" ]; then
-            echo "::warning::MAPS_API_KEY GitHub Secret is not configured. APK will build, but Google Maps tiles will not authenticate."
+            echo "::warning::MAPS_API_KEY GitHub Secret is not configured. Google Maps will not authenticate."
           else
-            echo "MAPS_API_KEY secret detected and will be injected into the manifest."
+            echo "MAPS_API_KEY secret detected."
+          fi
+          if [ -z "${SUPABASE_PUBLISHABLE_KEY:-}" ]; then
+            echo "::warning::SUPABASE_PUBLISHABLE_KEY GitHub Secret is not configured. Supabase authentication will not work."
+          else
+            echo "SUPABASE_PUBLISHABLE_KEY secret detected."
           fi
 
       - name: Validate toolchain and Gradle configuration
@@ -99,7 +107,7 @@ jobs:
           echo "status=$status" >> "$GITHUB_OUTPUT"
           exit "$status"
 
-      - name: Publish Kotlin compiler errors to job summary
+      - name: Publish Kotlin compiler errors
         if: always()
         shell: bash
         run: |
@@ -117,9 +125,9 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: smart-biller-kotlin-diagnostics-${{ github.run_number }}
+          name: bmax-kotlin-diagnostics-${{ github.run_number }}
           path: kotlin-compile.log
-          if-no-files-found: error
+          if-no-files-found: ignore
           retention-days: 14
 
       - name: Assemble debug APK
@@ -137,7 +145,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: smart-biller-gradle-diagnostics-${{ github.run_number }}
+          name: bmax-gradle-diagnostics-${{ github.run_number }}
           path: gradle-build.log
           if-no-files-found: ignore
           retention-days: 14
@@ -156,7 +164,7 @@ jobs:
         if: steps.kotlin_compile.outputs.status == '0'
         uses: actions/upload-artifact@v4
         with:
-          name: smart-biller-native-debug-apk
+          name: bmax-native-debug-apk
           path: android-app/build/outputs/apk/debug/android-app-debug.apk
           if-no-files-found: error
           retention-days: 14
