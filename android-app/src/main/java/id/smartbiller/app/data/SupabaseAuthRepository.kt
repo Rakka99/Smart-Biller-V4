@@ -1,6 +1,7 @@
 package id.smartbiller.app.data
 
 import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.postgrest.from
 import kotlinx.serialization.SerialName
@@ -24,13 +25,14 @@ data class SupabaseLoginResult(
 
 /**
  * Supabase repository isolated behind a small API surface.
- * Auth is accessed through the installed Supabase Auth plugin.
  */
 class SupabaseAuthRepository(
     private val client: SupabaseClient = SupabaseClientProvider.client,
 ) {
+    private val authModule: Auth
+        get() = client.pluginManager.getPlugin(Auth)
+
     suspend fun login(email: String, password: String): Result<SupabaseLoginResult> = runCatching {
-        val authModule = SupabaseClientProvider.auth
         authModule.signInWith(Email) {
             this.email = email
             this.password = password
@@ -54,7 +56,6 @@ class SupabaseAuthRepository(
     }
 
     suspend fun currentProfile(): Result<SupabaseProfile> = runCatching {
-        val authModule = SupabaseClientProvider.auth
         val userId = authModule.currentSessionOrNull()?.user?.id
             ?: error("Belum login")
 
@@ -67,8 +68,8 @@ class SupabaseAuthRepository(
     }
 
     suspend fun logout() {
-        SupabaseClientProvider.auth.signOut()
+        authModule.signOut()
     }
 
-    fun accessToken(): String? = SupabaseClientProvider.auth.currentSessionOrNull()?.accessToken
+    fun accessToken(): String? = authModule.currentSessionOrNull()?.accessToken
 }
