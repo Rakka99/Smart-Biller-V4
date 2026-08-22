@@ -1,1 +1,3 @@
-<resources><string name="app_name">Smart Biller</string></resources>
+<resources>
+    <string name="app_name">Bmax Electricity Payment Monitoring</string>
+</resources>
