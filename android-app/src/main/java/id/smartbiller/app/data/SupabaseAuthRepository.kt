@@ -22,28 +22,30 @@ data class SupabaseLoginResult(
     val profile: SupabaseProfile,
 )
 
+/**
+ * Supabase repository isolated behind a small API surface.
+ * Auth is accessed through the installed Supabase Auth plugin.
+ */
 class SupabaseAuthRepository(
     private val client: SupabaseClient = SupabaseClientProvider.client,
 ) {
     suspend fun login(email: String, password: String): Result<SupabaseLoginResult> = runCatching {
-        val auth = client.auth
-        auth.signInWith(Email) {
+        val authModule = SupabaseClientProvider.auth
+        authModule.signInWith(Email) {
             this.email = email
             this.password = password
         }
 
-        val session = auth.currentSessionOrNull()
+        val session = authModule.currentSessionOrNull()
             ?: error("Supabase session tidak tersedia")
-
         val userId = session.user?.id ?: error("User ID tidak tersedia")
+
         val profile = client
             .from("profiles")
-            .select()
+            .select {
+                filter { eq("id", userId) }
+            }
             .decodeSingle<SupabaseProfile>()
-
-        if (profile.id != userId) {
-            error("Profil Supabase tidak sesuai dengan pengguna yang login")
-        }
 
         SupabaseLoginResult(
             accessToken = session.accessToken,
@@ -52,23 +54,21 @@ class SupabaseAuthRepository(
     }
 
     suspend fun currentProfile(): Result<SupabaseProfile> = runCatching {
-        val userId = client.auth.currentSessionOrNull()?.user?.id
+        val authModule = SupabaseClientProvider.auth
+        val userId = authModule.currentSessionOrNull()?.user?.id
             ?: error("Belum login")
 
-        val profile = client
+        client
             .from("profiles")
-            .select()
+            .select {
+                filter { eq("id", userId) }
+            }
             .decodeSingle<SupabaseProfile>()
-
-        if (profile.id != userId) {
-            error("Profil Supabase tidak sesuai dengan pengguna yang login")
-        }
-        profile
     }
 
     suspend fun logout() {
-        client.auth.signOut()
+        SupabaseClientProvider.auth.signOut()
     }
 
-    fun accessToken(): String? = client.auth.currentSessionOrNull()?.accessToken
+    fun accessToken(): String? = SupabaseClientProvider.auth.currentSessionOrNull()?.accessToken
 }
