@@ -1,5 +1,6 @@
 package id.smartbiller.app.data
 
+import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.providers.builtin.Email
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -21,7 +22,7 @@ data class SupabaseLoginResult(
 )
 
 class SupabaseAuthRepository(
-    private val client: io.github.jan.supabase.SupabaseClient = SupabaseClientProvider.client,
+    private val client: SupabaseClient = SupabaseClientProvider.client,
 ) {
     suspend fun login(email: String, password: String): Result<SupabaseLoginResult> = runCatching {
         client.auth.signInWith(Email) {
