@@ -17,9 +17,14 @@ android {
         manifestPlaceholders["MAPS_API_KEY"] = providers.gradleProperty("MAPS_API_KEY").orNull
             ?: System.getenv("MAPS_API_KEY")
             ?: ""
+        buildConfigField("String", "SUPABASE_URL", "\"https://vgnynrzhanfnbifjedga.supabase.co\"")
+        buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"\${SUPABASE_PUBLISHABLE_KEY}\"")
     }
 
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -52,4 +57,13 @@ dependencies {
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
 
     implementation("com.google.maps.android:maps-compose:6.12.0")
+
+    // Supabase Kotlin SDK — keep the publishable key in GitHub Actions Secret.
+    implementation(platform("io.github.jan-tennert.supabase:bom:3.2.0"))
+    implementation("io.github.jan-tennert.supabase:auth-kt")
+    implementation("io.github.jan-tennert.supabase:postgrest-kt")
+    implementation("io.ktor:ktor-client-android:3.2.3")
+    implementation("io.ktor:ktor-client-content-negotiation:3.2.3")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:3.2.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
 }
