@@ -15,6 +15,20 @@ Aplikasi monitoring operasional PLN Pascabayar, pembayaran IAK, PDIL, mapping lo
 - **SUPERVISOR**: monitoring wilayah/ULP, PDIL, leaderboard, pencarian.
 - **BILLER**: pencarian, inquiry, pembayaran, invoice, transaksi.
 
+## Supabase authentication and database
+
+BMAX/Smart Biller menggunakan **Supabase sebagai identity dan database access layer**.
+
+- Supabase Auth menangani login email/password dan session.
+- `public.profiles` menyimpan role dan scope operasional (`ADMIN`, `SUPERVISOR`, `BILLER`, region, ULP, RBM).
+- Row Level Security (RLS) membatasi data sesuai role dan wilayah/ULP/Biller.
+- `bmax_rbms` menyimpan kepemilikan RBM A-E per Biller.
+- `customers.bmax_biller_id` dan `customers.bmax_rbm_id` mengikat pelanggan ke pemilik operasional.
+- Android menggunakan Supabase publishable key saja; **service-role key tidak boleh berada di APK**.
+- IAK credentials tetap server-side dan tidak pernah dikirim ke Android.
+
+Supabase project digunakan pada region Asia Pacific (Singapore) dan endpoint client dikonfigurasi melalui `SUPABASE_URL` serta `SUPABASE_PUBLISHABLE_KEY`.
+
 ## Biller and RBM structure
 
 Setiap Biller memiliki tepat lima kode rute RBM:
@@ -25,15 +39,14 @@ Setiap Biller memiliki tepat lima kode rute RBM:
 - RBM D
 - RBM E
 
-Database mengikat setiap RBM ke **Biller + ULP**, kemudian setiap pelanggan dapat diikat ke `billerId` dan `rbmId`. Endpoint `/api/rbms` hanya mengembalikan RBM milik Biller ketika login sebagai BILLER, RBM pada ULP ketika login sebagai SUPERVISOR, dan seluruh RBM untuk ADMIN.
-
-Inquiry dan pembayaran Biller juga memeriksa kepemilikan pelanggan berdasarkan Biller/RBM sebelum transaksi diteruskan ke IAK.
+Database mengikat setiap RBM ke **Biller + ULP**, kemudian setiap pelanggan dapat diikat ke Biller dan RBM. Inquiry dan pembayaran juga harus memeriksa scope kepemilikan sebelum transaksi diproses.
 
 ## Project structure
 
-- `apps/api` — backend Node.js/Express + Prisma/PostgreSQL.
+- `apps/api` — backend Node.js/Express + Prisma/PostgreSQL untuk business logic dan IAK.
 - `apps/web` — frontend Vite/React + Capacitor Android.
-- `prisma` — database schema and migrations.
+- `android-app` — Android Kotlin/Jetpack Compose.
+- `prisma` — database schema and migrations untuk backend.
 - `data` — manifest/import configuration. Customer master production/demo data is intentionally excluded from this public repository.
 - `.github/workflows` — GitHub Actions Android build.
 
@@ -50,7 +63,16 @@ Flow transaksi:
 5. Jika hasil payment pending/response tidak diterima, backend menggunakan `checkstatus` berdasarkan `ref_id` sebelum menentukan hasil akhir.
 6. Setelah sukses, billing ditandai PAID dan invoice dibuat.
 
-IAK API key dan username hanya boleh berada di backend environment; jangan pernah memasukkannya ke APK, frontend, atau repository.
+## Google Sheets temporary layer
+
+Google Sheets + Google Apps Script dapat digunakan sebagai data source sementara untuk development/demo melalui repository abstraction. Data yang sudah disinkronkan tetap dicache di Room pada Android.
+
+Mode:
+
+- `GOOGLE_SHEETS` — temporary/development.
+- `BACKEND_API` — production.
+
+Perpindahan ke production tidak boleh mengubah Compose UI, ViewModel, UseCase, atau domain model.
 
 ## Local setup
 
@@ -63,21 +85,35 @@ npm run build
 npx cap sync android
 ```
 
-## Environment
+## Android Supabase configuration
 
-Copy `.env.example` to `.env` dan konfigurasi PostgreSQL, JWT, CORS, serta credential IAK. Jangan commit API key atau credential production.
+Set environment berikut sebelum build Android:
 
-Untuk development IAK, gunakan endpoint sandbox yang tercantum pada dokumentasi IAK dan `IAK_PLN_PRODUCT_CODE=PLNPOSTPAID`.
+```text
+SUPABASE_URL=https://vgnynrzhanfnbifjedga.supabase.co
+SUPABASE_PUBLISHABLE_KEY=<publishable-key>
+```
+
+Untuk GitHub Actions gunakan repository secrets:
+
+```text
+SUPABASE_URL
+SUPABASE_PUBLISHABLE_KEY
+MAPS_API_KEY
+```
+
+Publishable key boleh digunakan oleh client, tetapi akses data tetap harus dilindungi dengan RLS. Service-role key dan IAK API key tidak boleh ada di APK atau frontend.
 
 ## Production notes
 
-1. Backend harus berjalan melalui HTTPS.
-2. Jangan pernah menaruh IAK API credentials di APK/frontend.
-3. Set `CORS_ORIGIN` ke domain frontend.
-4. Pastikan IP server production sudah diizinkan pada pengaturan API IAK jika diperlukan.
+1. Backend dan endpoint payment harus berjalan melalui HTTPS.
+2. Supabase RLS wajib aktif untuk seluruh tabel yang diakses client.
+3. Android hanya memakai Supabase publishable key.
+4. IAK API credentials hanya berada pada backend/server environment.
 5. Untuk transaksi `PENDING`, lakukan `checkstatus` sebelum retry payment agar tidak terjadi pembayaran ganda.
 6. Denda keterlambatan harus berasal dari sumber billing/API resmi; aplikasi tidak mengarang nominal denda.
+7. Aktifkan leaked password protection pada Supabase Auth sebelum production.
 
 ## Android build
 
-The GitHub Actions workflow builds the Capacitor Android project and publishes the debug APK as an artifact.
+The GitHub Actions workflow builds the Android project and publishes the debug APK as an artifact.
