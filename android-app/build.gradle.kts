@@ -14,11 +14,21 @@ android {
         targetSdk = 36
         versionCode = 4
         versionName = "4.0.0"
-        manifestPlaceholders["MAPS_API_KEY"] = providers.gradleProperty("MAPS_API_KEY").orNull
+
+        val mapsApiKey = providers.gradleProperty("MAPS_API_KEY").orNull
             ?: System.getenv("MAPS_API_KEY")
             ?: ""
-        buildConfigField("String", "SUPABASE_URL", "\"https://vgnynrzhanfnbifjedga.supabase.co\"")
-        buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"\${SUPABASE_PUBLISHABLE_KEY}\"")
+        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
+
+        val supabaseUrl = providers.gradleProperty("SUPABASE_URL").orNull
+            ?: System.getenv("SUPABASE_URL")
+            ?: "https://vgnynrzhanfnbifjedga.supabase.co"
+        val supabasePublishableKey = providers.gradleProperty("SUPABASE_PUBLISHABLE_KEY").orNull
+            ?: System.getenv("SUPABASE_PUBLISHABLE_KEY")
+            ?: ""
+
+        buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
+        buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"$supabasePublishableKey\"")
     }
 
     buildFeatures {
@@ -58,7 +68,6 @@ dependencies {
 
     implementation("com.google.maps.android:maps-compose:6.12.0")
 
-    // Supabase Kotlin SDK — keep the publishable key in GitHub Actions Secret.
     implementation(platform("io.github.jan-tennert.supabase:bom:3.2.0"))
     implementation("io.github.jan-tennert.supabase:auth-kt")
     implementation("io.github.jan-tennert.supabase:postgrest-kt")
