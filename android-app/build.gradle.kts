@@ -5,15 +5,15 @@ plugins {
 }
 
 android {
-    namespace = "id.smartbiller.app"
+    namespace = "id.bmax.app"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "id.smartbiller.app"
+        applicationId = "id.bmax.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
-        versionName = "3.0.1"
+        versionCode = 4
+        versionName = "4.0.0"
         manifestPlaceholders["MAPS_API_KEY"] = providers.gradleProperty("MAPS_API_KEY").orNull
             ?: System.getenv("MAPS_API_KEY")
             ?: ""
@@ -51,6 +51,5 @@ dependencies {
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
 
-    // Google Maps SDK + Jetpack Compose integration.
     implementation("com.google.maps.android:maps-compose:6.12.0")
 }
